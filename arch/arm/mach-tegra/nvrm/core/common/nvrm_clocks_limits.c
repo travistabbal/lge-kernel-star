@@ -82,7 +82,7 @@ NvU32 FakeShmooVmaxIndex = 7; // Max voltage index in the voltage tab (size-1)
 
 #ifdef USE_FAKE_SHMOO_PSYCHO
 
-#define MAX_OVERCLOCK (1400000)
+#define MAX_OVERCLOCK (1500000)
 
 NvU32 FakeShmooVoltages[] = {
     770,
