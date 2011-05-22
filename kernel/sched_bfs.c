@@ -4678,6 +4678,7 @@ void wake_up_idle_cpu(int cpu)
 		smp_send_reschedule(cpu);
 }
 
+
 #endif /* CONFIG_NO_HZ */
 
 /*
