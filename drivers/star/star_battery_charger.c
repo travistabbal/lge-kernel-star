@@ -91,15 +91,18 @@
 #define CHG_IC_SET_DELAY        1500    // 1.5ms for RT9524
 //20100520, , Set Delay time of Charger setting [END]
 
-#define NVBATTERY_POLLING_INTERVAL 390 /* 90+300 seconds */ // Use with HZ(1sec) const
+#define NVBATTERY_POLLING_INTERVAL 30 /* 90+300 seconds */ // Use with HZ(1sec) const
 //20100929, , RTC setting for checking battery status during sleep
-#define SLEEP_BAT_CHECK_PERIOD 2090 /* 90 + 2000 seconds */
+#define SLEEP_BAT_CHECK_PERIOD 240 /* 90 + 2000 seconds */
 #define CRITICAL_BAT_CHECK_PERIOD 90 // second
 #define CBC_REQUEST_TIME_FIRST	35000 // ms
 #define CBC_REQUEST_TIME_SECOND	2000 // ms
 #define CBC_REQUEST_TIME_NORMAL	180000 // ms
 #define CBC_REQUEST_TIME_CRITICAL 480000 // ms
 #define GAUGE_FOLLOW_TIME	120 // second
+
+extern void update_capacity(void);
+
 
 typedef enum {
 	NvCharger_Type_Battery = 0,
@@ -762,6 +765,8 @@ static void star_debug_show_battery_status(void)
 
 static void star_capacity_from_voltage_via_calculate(void)
 {
+	update_capacity();
+#if 0	
 	NvU32	calculate_capacity = 0;
 
 	if ((batt_dev->ACLineStatus == NV_TRUE) && ((batt_dev->charger_state_machine == CHARGER_STATE_RECHARGE) || (batt_dev->charger_state_machine == CHARGER_STATE_CHARGE)))
@@ -846,6 +851,7 @@ static void star_capacity_from_voltage_via_calculate(void)
 
 		LDB("[CBC] : Without Charger : CAL_CBC(%d)", calculate_capacity);
 	}
+#endif	
 }
 
 static void true_valid_cbc_process(NvU32 cbc_value)
@@ -1106,6 +1112,7 @@ static ssize_t tegra_battery_store_property(
 	LDB("[gauge]: gauge_value(%d)", value);
 	if (!tegra_at_command_parse(value))
 		return count;
+	return 0;
 }
 
 
@@ -1139,6 +1146,7 @@ static NvBool star_charger_disable_ok_check(void)
 	{
 		return NV_FALSE;
 	}
+	return NV_FALSE;
 }
 
 static ssize_t star_cbc_show_property(
@@ -1544,6 +1552,7 @@ static int star_battery_infomation_update(void)
 
 			tegra_get_battery_tech(&batt_dev->batt_chemtech, NvRmPmuBatteryInst_Main);
 		}
+		update_capacity();
 		//LDB("[bat_poll] Complete !!!");
 		return NV_TRUE;
 	}
@@ -1790,173 +1799,133 @@ static NvBool valid_capacity_gauge(void)
 	return NV_TRUE;
 }
 
+static NvU16 capacity_table_usb[101] = BAT_CV_USB_TABLE;
+static NvU16 capacity_table_ta[101] = BAT_CV_TA_TABLE;
+static NvU16 capacity_table_unplugged[101] = BAT_CV_TABLE;
+
+#define MAX_BAT_SAMPLES 12
+static u64 bat_samples[MAX_BAT_SAMPLES];
+static u64 last_update = 0;
+static int last_index = 0;
+
+static void calc_capacity(NvU16 *capacity_table, char *src)
+{
+	static NvU8 capacity_index = 0;
+	static NvU32 temp_vol;
+	int i;
+	int closest = 100;
+	int min_diff = 1000000;
+
+	// Make sure we don't sample more frequently than every four seconds
+	u64 now = jiffies_to_msecs(get_jiffies_64());
+	if( (now - last_update) < 4000) {
+		batt_dev->Capacity_Voltage = last_index;
+		return;
+	}
+	// Smooth the reading by averaging over the last MAX_BAT_SAMPLES
+	temp_vol = batt_dev->batt_vol;
+	if(last_update) {
+		// Age off the oldest sample by shifting the array up; calculate the average in the same pass through the array.
+		int c = 0;
+		for(i=(MAX_BAT_SAMPLES-1); i > 0; i--) {
+			bat_samples[i] = bat_samples[i-1];
+			c += bat_samples[i];
+		}
+		bat_samples[0] = temp_vol;
+		c += temp_vol;
+		temp_vol = (c / MAX_BAT_SAMPLES);
+	}
+	else {
+		// No samples yet - initialize the sample array.
+		for(i=(MAX_BAT_SAMPLES-1); i >= 0; i--)
+			bat_samples[i] = temp_vol;
+	}
+	capacity_table = capacity_table_unplugged; // @@@ Make sure percent doesn't jump around when unplugged
+	//	capacity_table = capacity_table_ta; // @@@ Make sure percent doesn't jump around when unplugged
+	// Walk the capacity table looking for the closest voltage.
+	for (capacity_index = 100; capacity_index >= 0 ; capacity_index--) {
+		int diff = abs((capacity_table[capacity_index] - temp_vol));
+		if(diff < min_diff) {
+			min_diff = diff;
+			closest = capacity_index;
+		}
+		if (capacity_table[capacity_index] <= temp_vol)
+			break;
+	}
+	capacity_index = closest;
+	printk("[%s] Calc capacity: raw %dmv, smoothed %dmv, %d%%\n",  src == NULL ? "DISCHARGING Battery" : src, batt_dev->batt_vol, temp_vol, capacity_index);
+	if(capacity_index < 0) {
+		lprintk(D_BATT, "%s: [Critical] Unexpected Battery gauge value!!!(%d) \n", __func__, capacity_index);
+		capacity_index = 30;
+	}
+	batt_dev->Capacity_Voltage = capacity_index;
+	last_index = capacity_index;
+	last_update = now;
+}
+
 static NvBool capacity_with_charger_source_USB(void)
 {
-	static NvU16 capacity_table[] = BAT_CV_USB_TABLE;
-	static NvU8 capacity_index = 0, range_index = 0;
-	static NvU32 temp_vol;
-
-	//temp_vol = (NvU32)((batt_dev->batt_vol + 2*batt_dev->vol_for_capacity)/3);
-	temp_vol = batt_dev->batt_vol;
-	if (batt_dev->Capacity_first_time) // In first time, search range is from 0 to 100 (whole range)
-	{
-		for (capacity_index = 100; capacity_index >= 0 ; capacity_index--)
-		{
-			if ((capacity_table[capacity_index] <= temp_vol) || (capacity_index == 0))
-				goto set_BatteryLifePercent_w_USB;
-		}
-		capacity_index = 0;
-		goto set_BatteryLifePercent_w_USB;
-	}
-	else // After first time, search range is start from slightly reverse direction of previous gauge, and go forward to increase direction (because "Charging state" now) 
-	{
-		range_index = batt_dev->BatteryLifePercent;
-		for (; range_index >= 0; range_index--)
-		{
-			if ((capacity_table[range_index] <= temp_vol) || (range_index == 0))
-				break;
-		}
-		capacity_index = range_index;
-
-		for (; capacity_index <= 100 ; capacity_index++ )
-		{
-			if ((capacity_table[capacity_index] >= temp_vol) || (capacity_index == 100))
-			{
-				goto set_BatteryLifePercent_w_USB;
-			}
-		}
-		capacity_index = 100;
-		goto set_BatteryLifePercent_w_USB;
-	}
-
-	return NV_FALSE;
-
-set_BatteryLifePercent_w_USB:
-	if ((capacity_index >= 0) || (capacity_index <= 100))
-	{
-		batt_dev->Capacity_Voltage = capacity_index;
-		//LDB("[bat_cv] CV_w gauge USB(%d)", batt_dev->Capacity_Voltage);
-	}
-	else // After first time, search range is start from slightly reverse direction of previous gauge, and go forward to increase direction (because "Charging state" now) 
-	{
-		lprintk(D_BATT, "%s: [Critical] Unexpected Battery gauge value!!!(%d) \n", __func__, capacity_index);
-		batt_dev->Capacity_Voltage = 30; // default setting
-	}
-
+	calc_capacity(capacity_table_usb, "CHARGING USB");
 	return NV_TRUE;
 }
 
 static NvBool capacity_with_charger_source_TA(void)
 {
-	static NvU16 capacity_table[] = BAT_CV_TA_TABLE;
-	static NvU8 capacity_index = 0, range_index = 0;
-	static NvU32 temp_vol;
-
-	//temp_vol = (NvU32)((batt_dev->batt_vol + 2*batt_dev->vol_for_capacity)/3);
-	temp_vol = batt_dev->batt_vol;
-	if (batt_dev->Capacity_first_time) // In first time, search range is from 0 to 100 (whole range)
-	{
-		for (capacity_index = 100; capacity_index >= 0 ; capacity_index--)
-		{
-			if ((capacity_table[capacity_index] <= temp_vol) || (capacity_index == 0))
-				goto set_BatteryLifePercent_w_TA;
-		}
-		capacity_index = 0;
-		goto set_BatteryLifePercent_w_TA;
-	}
-	else
-	{
-		range_index = batt_dev->BatteryLifePercent;
-		for (; range_index >= 0; range_index-- )
-		{
-			if ((capacity_table[range_index] <= temp_vol) || (range_index == 0))
-				break;
-		}
-		capacity_index = range_index;
-
-		for (; capacity_index <= 100 ; capacity_index++ )
-		{
-			if ((capacity_table[capacity_index] >= temp_vol) || (capacity_index == 100))
-			{
-				goto set_BatteryLifePercent_w_TA;
-			}
-		}
-		capacity_index = 100;
-		goto set_BatteryLifePercent_w_TA;
-	}
-
-	return NV_FALSE;
-
-set_BatteryLifePercent_w_TA:
-	if ((capacity_index >= 0) || (capacity_index <= 100))
-	{
-		batt_dev->Capacity_Voltage = capacity_index;
-		//LDB("[bat_cv] CV_w gauge TA(%d)", batt_dev->Capacity_Voltage);
-	}
-	else
-	{
-		lprintk(D_BATT, "%s: [Critical] Unexpected Battery gauge value!!!(%d) \n", __func__, capacity_index);
-		batt_dev->Capacity_Voltage = 30; // In first time, search range is from 0 to 100 (whole range)
-	}
-
+	calc_capacity(capacity_table_ta, "CHARGING AC");
 	return NV_TRUE;
 }
 
 static NvBool capacity_without_charger_source(void)
 {
-	static NvU16 capacity_table[] = BAT_CV_TABLE;
-	static NvU8 capacity_index = 100, range_index = 0;
-	static NvU32 temp_vol;
-
-	//temp_vol = (NvU32)((batt_dev->batt_vol + 2*batt_dev->vol_for_capacity)/3);
-	temp_vol = batt_dev->batt_vol;
-	if (batt_dev->Capacity_first_time) // default setting
-	{
-		for (capacity_index = 0; capacity_index <= 100; capacity_index++)
-		{
-			if ((capacity_table[capacity_index] >= temp_vol) || (capacity_index == 100))
-				goto set_BatteryLifePercent_wo;
-		}
-		capacity_index = 100;
-		goto set_BatteryLifePercent_wo;
-	}
-	else // After first time, search range is start from slightly reverse direction of previous gauge, and go forward to decrease direction (because "Discharging state" now) 
-	{
-		range_index = batt_dev->BatteryLifePercent;
-		for (; range_index <= 100; range_index++ )
-		{
-			if ((capacity_table[range_index] >= temp_vol) || (range_index == 100))
-				break;
-		}
-		capacity_index = range_index;
-
-		for (; capacity_index >= 0 ; capacity_index-- )
-		{
-			if ((capacity_table[capacity_index] <= temp_vol) || (capacity_index == 0))
-			{
-				goto set_BatteryLifePercent_wo;
-			}
-		}
-		capacity_index = 0;
-		goto set_BatteryLifePercent_wo;
-	}
-
-	return NV_FALSE;
-
-set_BatteryLifePercent_wo:
-	if ((capacity_index >= 0) || (capacity_index <= 100))
-	{
-		batt_dev->Capacity_Voltage = capacity_index;
-		//LDB("[bat_cv] CV_wo gauge Battery(%d)", batt_dev->Capacity_Voltage);
-	}
-	else
-	{
-		lprintk(D_BATT, "%s: [Critical] Unexpected Battery gauge value in OneTime CV w/o Charger!!!(%d) \n", __func__, capacity_index);
-		batt_dev->Capacity_Voltage = 30; // default setting
-	}
-
+	calc_capacity(capacity_table_unplugged, NULL);
 	return NV_TRUE;
 }
+
+void update_capacity()
+{
+	switch (get_charging_ic_status())
+	{
+		case CHG_IC_DEFAULT_MODE:
+		case CHG_IC_USB_LO_MODE:
+			//LDB("[bat_cv]: Charging Source: USB");
+			if (!capacity_with_charger_source_USB())
+			{
+				LDB("[Critical]: CV_USB(%d)", batt_dev->Capacity_Voltage);
+				return;
+			}
+			break;
+
+		case CHG_IC_TA_MODE:
+		case CHG_IC_FACTORY_MODE:
+			//LDB("[bat_cv]: Charging Source: TA");
+			if (!capacity_with_charger_source_TA())
+			{
+				LDB("[Critical]: CV_TA(%d)", batt_dev->Capacity_Voltage);
+				return;
+			}
+			break;
+
+		case CHG_IC_DEACTIVE_MODE:
+			//LDB("[bat_cv]: Charging Source: NONE");
+			if (!capacity_without_charger_source())
+			{
+				LDB("[Critical]: CV_BATT(%d)", batt_dev->Capacity_Voltage);
+				return;
+			}
+			break;
+
+		default:
+			LDB("[Critical] Unknown state - CV");
+			if (!capacity_without_charger_source())
+			{
+				LDB("[Critical]: CV_Unknown(%d)", batt_dev->Capacity_Voltage);
+				return;
+			}
+			break;
+	}
+}
+
+
 
 static NvBool determine_capacity_for_demo(void)
 {
@@ -1987,49 +1956,9 @@ static NvBool determine_capacity_for_demo(void)
 		batt_dev->batt_vol = (NvU32)(Average_Vol /Valid_count); // Booting time, current consumption is high, so determine capacity with bias...
 		batt_dev->vol_for_capacity = batt_dev->batt_vol + 200;
 	}
-/*
-	switch (get_charging_ic_status())
-	{
-		case CHG_IC_DEFAULT_MODE:
-		case CHG_IC_USB_LO_MODE:
-			//LDB("[bat_cv]: Charging Source: USB");
-			if (!capacity_with_charger_source_USB())
-			{
-				LDB("[Critical]: CV_USB(%d)", batt_dev->Capacity_Voltage);
-				return NV_FALSE;
-			}
-			break;
 
-		case CHG_IC_TA_MODE:
-		case CHG_IC_FACTORY_MODE:
-			//LDB("[bat_cv]: Charging Source: TA");
-			if (!capacity_with_charger_source_TA())
-			{
-				LDB("[Critical]: CV_TA(%d)", batt_dev->Capacity_Voltage);
-				return NV_FALSE;
-			}
-			break;
-
-		case CHG_IC_DEACTIVE_MODE:
-			//LDB("[bat_cv]: Charging Source: NONE");
-			if (!capacity_without_charger_source())
-			{
-				LDB("[Critical]: CV_BATT(%d)", batt_dev->Capacity_Voltage);
-				return NV_FALSE;
-			}
-			break;
-
-		default:
-			LDB("[Critical] Unknown state - CV");
-			if (!capacity_without_charger_source())
-			{
-				LDB("[Critical]: CV_Unknown(%d)", batt_dev->Capacity_Voltage);
-				return NV_FALSE;
-			}
-			break;
-	}
-*/
-	star_capacity_from_voltage_via_calculate();
+	update_capacity();
+	//	star_capacity_from_voltage_via_calculate();
 	valid_capacity_gauge();
 
 	return NV_TRUE;
@@ -2415,11 +2344,13 @@ static void star_battery_data_poll_period_change(void)
 
 static void star_gauge_follower_func(void)
 {
-	NvU32 gauge_follower_time;
-	NvU32 gauge_follower_time_mask;
 
 	//LDC("");
-
+	update_capacity();
+	batt_dev->BatteryLifePercent = batt_dev->Capacity_Voltage;
+#if 0
+	NvU32 gauge_follower_time;
+	NvU32 gauge_follower_time_mask;
         if (batt_dev->BatteryLifePercent - batt_dev->BatteryGauge > 5 ||
             batt_dev->BatteryLifePercent - batt_dev->BatteryGauge < -5) {
 		// If the diff is over 5%, just reset it
@@ -2441,7 +2372,7 @@ static void star_gauge_follower_func(void)
 		if (batt_dev->BatteryGauge < batt_dev->BatteryLifePercent)
 			batt_dev->BatteryLifePercent -= 1;
 	}
-
+#endif
 	if (batt_dev->BatteryLifePercent < 0) batt_dev->BatteryLifePercent = 0;
 	if (batt_dev->BatteryLifePercent > 100) batt_dev->BatteryLifePercent = 100;
 }
@@ -2451,6 +2382,7 @@ static void tegra_battery_status_poll_work(struct work_struct *work)
 	//LDB("");
 //20100926, , Communication with BatteryService for AT Command [START]
 	star_battery_infomation_update();
+	update_capacity();
 	mod_timer(&(batt_dev->charger_state_read_timer), jiffies + msecs_to_jiffies(0));
 	charger_control_with_battery_temp();
 
@@ -3184,10 +3116,10 @@ err_switch_dev_register:
 static void tegra_battery_shutdown(struct platform_device *pdev)
 {
 
-    int i =0;
 	printk("tegra_battery_shutdown\n");
 	charging_ic_deactive();
 #if 0
+    int i =0;
     if (&batt_dev->battery_id_poll_work)
     {
       cancel_delayed_work_sync(&batt_dev->battery_id_poll_work);
