@@ -1431,6 +1431,7 @@ static int star_battery_infomation_update(void)
 	//LDB("[bat_poll] Start!!!");
 	if (NvRmPmuUpdateBatteryInfo(s_hRmGlobal, &AcStatus, &BatStatus, &BatData) && NvRmPmuGetAcLineStatus(s_hRmGlobal, &AcStatus))
 	{
+		//		printk("star_battery_infomation_update: %dmv %d%% %d\n", BatData.batteryVoltage, BatData.batteryLifePercent, BatData.batteryLifeTime);
 		switch (AcStatus)
 		{
 			case NvRmPmuAcLine_Offline:
@@ -1669,6 +1670,7 @@ static int tegra_battery_get_property(struct power_supply *psy,
 
 		case POWER_SUPPLY_PROP_CAPACITY:
 			//if (batt_dev->BatteryGauge_on == NV_TRUE)
+			update_capacity();
 			val->intval = batt_dev->BatteryLifePercent;
 			/*else
 				val->intval = 999;*/
@@ -1807,6 +1809,7 @@ static NvU16 capacity_table_unplugged[101] = BAT_CV_TABLE;
 static u64 bat_samples[MAX_BAT_SAMPLES];
 static u64 last_update = 0;
 static int last_index = 0;
+static NvU16 *last_table = NULL;
 
 static void calc_capacity(NvU16 *capacity_table, char *src)
 {
@@ -1820,11 +1823,22 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 	u64 now = jiffies_to_msecs(get_jiffies_64());
 	if( (now - last_update) < 4000) {
 		batt_dev->Capacity_Voltage = last_index;
+		batt_dev->BatteryLifePercent = last_index;
 		return;
 	}
-	// Smooth the reading by averaging over the last MAX_BAT_SAMPLES
+	
 	temp_vol = batt_dev->batt_vol;
-	if(last_update) {
+	// If we have an obviously bogus reading, discard it (this happens sometimes at boot)
+	if(temp_vol < 2000 || temp_vol > 4800) {
+		printk("Calc capacity: invalid batt_vol\n");
+		// Set a default value so that we don't go into instant shutdown.
+		batt_dev->Capacity_Voltage = 32;
+		batt_dev->BatteryLifePercent = 32;
+		return;
+	}
+	
+	// Smooth the reading by averaging over the last MAX_BAT_SAMPLES
+	if(last_update && last_table == capacity_table) {
 		// Age off the oldest sample by shifting the array up; calculate the average in the same pass through the array.
 		int c = 0;
 		for(i=(MAX_BAT_SAMPLES-1); i > 0; i--) {
@@ -1836,10 +1850,11 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 		temp_vol = (c / MAX_BAT_SAMPLES);
 	}
 	else {
-		// No samples yet - initialize the sample array.
+		// No samples yet - or the capacity table has changed - initialize the sample array.
 		for(i=(MAX_BAT_SAMPLES-1); i >= 0; i--)
 			bat_samples[i] = temp_vol;
 	}
+	last_table = capacity_table;
 	capacity_table = capacity_table_unplugged; // @@@ Make sure percent doesn't jump around when unplugged
 	//	capacity_table = capacity_table_ta; // @@@ Make sure percent doesn't jump around when unplugged
 	// Walk the capacity table looking for the closest voltage.
@@ -1859,6 +1874,7 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 		capacity_index = 30;
 	}
 	batt_dev->Capacity_Voltage = capacity_index;
+	batt_dev->BatteryLifePercent = capacity_index;
 	last_index = capacity_index;
 	last_update = now;
 }
