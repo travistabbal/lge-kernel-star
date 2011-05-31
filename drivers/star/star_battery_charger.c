@@ -1805,7 +1805,7 @@ static NvU16 capacity_table_usb[101] = BAT_CV_USB_TABLE;
 static NvU16 capacity_table_ta[101] = BAT_CV_TA_TABLE;
 static NvU16 capacity_table_unplugged[101] = BAT_CV_TABLE;
 
-#define MAX_BAT_SAMPLES 12
+#define MAX_BAT_SAMPLES 20
 static u64 bat_samples[MAX_BAT_SAMPLES];
 static u64 last_update = 0;
 static int last_index = 0;
@@ -1871,9 +1871,9 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 	}
 	last_table = capacity_table;
 	if(temp_vol >= 3900)
-		capacity_index = 85+calc_range(temp_vol, 3900, 4200, 15);
+		capacity_index = 80+calc_range(temp_vol, 3900, 4200, 20);
 	else if(temp_vol >= 3600)
-		capacity_index = 20+calc_range(temp_vol, 3600, 3900, 65);
+		capacity_index = 20+calc_range(temp_vol, 3600, 3900, 60);
 	else
 		capacity_index = calc_range(temp_vol, 3200, 3600, 20);
 #if 0		
