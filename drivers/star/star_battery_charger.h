@@ -114,7 +114,7 @@ static NvBool determine_capacity_for_demo(void);
 4113 , \
 4127 , \
 4145 , \
-4150 }
+4200 }
 
 #define BAT_CV_TA_TABLE { 3358, \
 3411, \

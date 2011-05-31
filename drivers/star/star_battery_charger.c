@@ -1805,11 +1805,25 @@ static NvU16 capacity_table_usb[101] = BAT_CV_USB_TABLE;
 static NvU16 capacity_table_ta[101] = BAT_CV_TA_TABLE;
 static NvU16 capacity_table_unplugged[101] = BAT_CV_TABLE;
 
-#define MAX_BAT_SAMPLES 12
+#define MAX_BAT_SAMPLES 16
 static u64 bat_samples[MAX_BAT_SAMPLES];
 static u64 last_update = 0;
 static int last_index = 0;
 static NvU16 *last_table = NULL;
+
+static int calc_range(int value, int min, int max, int range)
+{
+	int spread, pct;
+	spread = value - min;
+	if(spread <= 0)
+		return 0;
+	pct = (int) (((float) spread) / ((float) (max-min)) * range);
+	//	printk("calc_range: %d (%d - %d) over %d: %d\n", value, min, max, range, pct);
+	if(pct > range)
+		pct = range;
+	return pct;
+}
+
 
 static void calc_capacity(NvU16 *capacity_table, char *src)
 {
@@ -1837,6 +1851,7 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 		return;
 	}
 	
+	capacity_table = capacity_table_unplugged; // @@@ Make sure percent doesn't jump around when unplugged
 	// Smooth the reading by averaging over the last MAX_BAT_SAMPLES
 	if(last_update && last_table == capacity_table) {
 		// Age off the oldest sample by shifting the array up; calculate the average in the same pass through the array.
@@ -1855,7 +1870,13 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 			bat_samples[i] = temp_vol;
 	}
 	last_table = capacity_table;
-	capacity_table = capacity_table_unplugged; // @@@ Make sure percent doesn't jump around when unplugged
+	if(temp_vol >= 3900)
+		capacity_index = 85+calc_range(temp_vol, 3900, 4200, 15);
+	else if(temp_vol >= 3600)
+		capacity_index = 20+calc_range(temp_vol, 3600, 3900, 65);
+	else
+		capacity_index = calc_range(temp_vol, 3200, 3600, 20);
+#if 0		
 	//	capacity_table = capacity_table_ta; // @@@ Make sure percent doesn't jump around when unplugged
 	// Walk the capacity table looking for the closest voltage.
 	for (capacity_index = 100; capacity_index >= 0 ; capacity_index--) {
@@ -1868,6 +1889,7 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 			break;
 	}
 	capacity_index = closest;
+#endif	
 	printk("[%s] Calc capacity: raw %dmv, smoothed %dmv, %d%%\n",  src == NULL ? "DISCHARGING Battery" : src, batt_dev->batt_vol, temp_vol, capacity_index);
 	if(capacity_index < 0) {
 		lprintk(D_BATT, "%s: [Critical] Unexpected Battery gauge value!!!(%d) \n", __func__, capacity_index);
