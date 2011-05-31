@@ -1808,7 +1808,7 @@ static NvU16 capacity_table_unplugged[101] = BAT_CV_TABLE;
 #define MAX_BAT_SAMPLES 20
 static u64 bat_samples[MAX_BAT_SAMPLES];
 static u64 last_update = 0;
-static int last_index = 0;
+static int last_index = -1;
 static NvU16 *last_table = NULL;
 
 static int calc_range(int value, int min, int max, int range)
@@ -1832,6 +1832,7 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 	int i;
 	int closest = 100;
 	int min_diff = 1000000;
+	int charging = (capacity_table == NULL) ? 0 : 1;
 
 	// Make sure we don't sample more frequently than every four seconds
 	u64 now = jiffies_to_msecs(get_jiffies_64());
@@ -1876,6 +1877,8 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 		capacity_index = 20+calc_range(temp_vol, 3600, 3900, 60);
 	else
 		capacity_index = calc_range(temp_vol, 3200, 3600, 20);
+	if(last_index != -1 && ((charging && capacity_index < last_index) || (!charging && capacity_index > last_index)))
+		capacity_index = last_index;
 #if 0		
 	//	capacity_table = capacity_table_ta; // @@@ Make sure percent doesn't jump around when unplugged
 	// Walk the capacity table looking for the closest voltage.
@@ -1889,7 +1892,7 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 			break;
 	}
 	capacity_index = closest;
-#endif	
+#endif
 	printk("[%s] Calc capacity: raw %dmv, smoothed %dmv, %d%%\n",  src == NULL ? "DISCHARGING Battery" : src, batt_dev->batt_vol, temp_vol, capacity_index);
 	if(capacity_index < 0) {
 		lprintk(D_BATT, "%s: [Critical] Unexpected Battery gauge value!!!(%d) \n", __func__, capacity_index);
