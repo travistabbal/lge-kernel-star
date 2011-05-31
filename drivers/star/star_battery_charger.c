@@ -1805,7 +1805,7 @@ static NvU16 capacity_table_usb[101] = BAT_CV_USB_TABLE;
 static NvU16 capacity_table_ta[101] = BAT_CV_TA_TABLE;
 static NvU16 capacity_table_unplugged[101] = BAT_CV_TABLE;
 
-#define MAX_BAT_SAMPLES 16
+#define MAX_BAT_SAMPLES 12
 static u64 bat_samples[MAX_BAT_SAMPLES];
 static u64 last_update = 0;
 static int last_index = 0;
