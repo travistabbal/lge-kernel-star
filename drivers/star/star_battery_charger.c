@@ -2045,12 +2045,12 @@ static ssize_t star_at_charge_store_property(
 	if ( value == 1 )
 	{
 		at_charge_index = NV_TRUE;
-		batt_dev->repeat_index = NV_FALSE;
+		//batt_dev->repeat_index = NV_FALSE;
 
 		star_battery_infomation_update();
 		star_battery_data_onetime_update(Update_Battery_Data);
 
-		charging_ic_active(CHG_IC_TA_MODE); // star_battery_date_onetime_update() for TA/USB is executed in active / deactive func.
+		//charging_ic_active(CHG_IC_TA_MODE); // star_battery_date_onetime_update() for TA/USB is executed in active / deactive func.
 
 	}
 
