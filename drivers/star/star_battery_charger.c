@@ -102,6 +102,7 @@
 #define GAUGE_FOLLOW_TIME	120 // second
 
 extern void update_capacity(void);
+static NvBool initialize_capacity(void);
 
 
 typedef enum {
@@ -1805,7 +1806,7 @@ static NvU16 capacity_table_usb[101] = BAT_CV_USB_TABLE;
 static NvU16 capacity_table_ta[101] = BAT_CV_TA_TABLE;
 static NvU16 capacity_table_unplugged[101] = BAT_CV_TABLE;
 
-#define MAX_BAT_SAMPLES 20
+#define MAX_BAT_SAMPLES 8
 static u64 bat_samples[MAX_BAT_SAMPLES];
 static u64 last_update = 0;
 static int last_index = -1;
@@ -1818,11 +1819,13 @@ static int calc_range(int value, int min, int max, int range)
 	if(spread <= 0)
 		return 0;
 	pct = (int) (((float) spread) / ((float) (max-min)) * range);
-	//	printk("calc_range: %d (%d - %d) over %d: %d\n", value, min, max, range, pct);
+	printk("calc_range: %d (%d - %d) over %d: %d\n", value, min, max, range, pct);
 	if(pct > range)
 		pct = range;
 	return pct;
 }
+
+static int initial_read = 1;
 
 
 static void calc_capacity(NvU16 *capacity_table, char *src)
@@ -1845,11 +1848,16 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 	temp_vol = batt_dev->batt_vol;
 	// If we have an obviously bogus reading, discard it (this happens sometimes at boot)
 	if(temp_vol < 2000 || temp_vol > 4800) {
-		printk("Calc capacity: invalid batt_vol\n");
-		// Set a default value so that we don't go into instant shutdown.
 		batt_dev->Capacity_Voltage = 32;
 		batt_dev->BatteryLifePercent = 32;
 		return;
+	}
+	if(initial_read) {
+		initial_read = false;
+		printk("Calc capacity: re-reading vol, now %d\n", temp_vol);
+		initialize_capacity();
+		temp_vol = batt_dev->batt_vol;
+		printk("Calc capacity: done re-reading vol, now %d\n", temp_vol);
 	}
 	
 	capacity_table = capacity_table_unplugged; // @@@ Make sure percent doesn't jump around when unplugged
@@ -1872,11 +1880,13 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 	}
 	last_table = capacity_table;
 	if(temp_vol >= 3900)
-		capacity_index = 80+calc_range(temp_vol, 3900, 4200, 20);
+		capacity_index = 90+calc_range(temp_vol, 3900, 4200, 10);
+	else if(temp_vol >= 3800)
+		capacity_index = 80+calc_range(temp_vol, 3800, 3900, 10);
 	else if(temp_vol >= 3600)
-		capacity_index = 20+calc_range(temp_vol, 3600, 3900, 60);
+		capacity_index = 30+calc_range(temp_vol, 3600, 3800, 50);
 	else
-		capacity_index = calc_range(temp_vol, 3200, 3600, 20);
+		capacity_index = calc_range(temp_vol, 3200, 3600, 30);
 	if(last_index != -1 && ((charging && capacity_index < last_index) || (!charging && capacity_index > last_index)))
 		capacity_index = last_index;
 #if 0		
@@ -1968,40 +1978,27 @@ void update_capacity()
 
 
 
-static NvBool determine_capacity_for_demo(void)
+static NvBool initialize_capacity(void)
 {
 	NvRmPmuAcLineStatus AcStatus = NvRmPmuAcLine_Offline;
 	NvU8 BatStatus = 0;
 	NvRmPmuBatteryData BatData = {0};
 	NvU32 Average_Vol = 0, Average_count, Valid_count = 0;
 
-	if (batt_dev->Capacity_first_time)
+	for (Average_count = 0; Average_count < 7; Average_count++)
 	{
-		for (Average_count = 0; Average_count < 7; Average_count++)
+		// Warning!! NvRmPmuUpdateBatteryInfo operate correctly, but return value is false.. why??
+		// Never use "if (!func)" for NvRmPmuUpdatebatteryInfo.....  , 2010-10-14
+		memset(&BatData, 0, sizeof(BatData));
+		NvRmPmuUpdateBatteryInfo(s_hRmGlobal, &AcStatus, &BatStatus, &BatData);
+		if ((2500 < BatData.batteryVoltage) && (BatData.batteryVoltage < 4500))
 		{
-			// Warning!! NvRmPmuUpdateBatteryInfo operate correctly, but return value is false.. why??
-			// Never use "if (!func)" for NvRmPmuUpdatebatteryInfo.....  , 2010-10-14
-			if (NvRmPmuUpdateBatteryInfo(s_hRmGlobal, &AcStatus, &BatStatus, &BatData))
-			{
-				if ((2500 < BatData.batteryVoltage) && (BatData.batteryVoltage < 4500))
-				{
-					Average_Vol += BatData.batteryVoltage; // Already in [mV] scale..
-					Valid_count++;
-				}
-			}
-			else
-			{
-				LDB("[Critical]: NvRmPmuUpdateBatteryInfo is failed!!!");
-			}
+			Average_Vol += BatData.batteryVoltage; // Already in [mV] scale..
+			Valid_count++;
 		}
-		batt_dev->batt_vol = (NvU32)(Average_Vol /Valid_count); // Booting time, current consumption is high, so determine capacity with bias...
-		batt_dev->vol_for_capacity = batt_dev->batt_vol + 200;
 	}
-
-	update_capacity();
-	//	star_capacity_from_voltage_via_calculate();
-	valid_capacity_gauge();
-
+	batt_dev->batt_vol = (NvU32)(Average_Vol/Valid_count); // Booting time, current consumption is high, so determine capacity with bias...
+	batt_dev->vol_for_capacity = batt_dev->batt_vol + 200;
 	return NV_TRUE;
 }
 #endif // USE_ONETIME_VOLTAGE_CAPACITY
@@ -2431,7 +2428,7 @@ static void tegra_battery_status_poll_work(struct work_struct *work)
 #if defined (USE_ONETIME_VOLTAGE_CAPACITY)
 	if (batt_dev->repeat_index == NV_TRUE)
 	{
-		if (!determine_capacity_for_demo())  // 100823 
+		if (!initialize_capacity())  // 100823 
 		{
 			batt_dev->BatteryLifePercent = 103;
 			LDB("[Critical]: capacity for demo is failed!!!!");
