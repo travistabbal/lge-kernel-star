@@ -1835,7 +1835,7 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 	int i;
 	int closest = 100;
 	int min_diff = 1000000;
-	int charging = (capacity_table == NULL) ? 0 : 1;
+	int charging = (src == NULL) ? 0 : 1;
 	NvRmPmuAcLineStatus AcStatus = NvRmPmuAcLine_Offline;
 	NvU8 BatStatus = 0;
 	NvRmPmuBatteryData BatData;
@@ -1871,7 +1871,7 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 	
 	capacity_table = capacity_table_unplugged; // @@@ Make sure percent doesn't jump around when unplugged
 	// Smooth the reading by averaging over the last MAX_BAT_SAMPLES
-	if(last_update && last_table == capacity_table) {
+	if(last_update) {
 		// Age off the oldest sample by shifting the array up; calculate the average in the same pass through the array.
 		int c = 0;
 		for(i=(MAX_BAT_SAMPLES-1); i > 0; i--) {
@@ -1887,15 +1887,29 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 		for(i=(MAX_BAT_SAMPLES-1); i >= 0; i--)
 			bat_samples[i] = temp_vol;
 	}
+	batt_dev->batt_vol = temp_vol;
 	last_table = capacity_table;
-	if(temp_vol >= 3900)
-		capacity_index = 90+calc_range(temp_vol, 3900, 4200, 10);
-	else if(temp_vol >= 3800)
-		capacity_index = 80+calc_range(temp_vol, 3800, 3900, 10);
-	else if(temp_vol >= 3600)
-		capacity_index = 40+calc_range(temp_vol, 3600, 3800, 40);
-	else
-		capacity_index = calc_range(temp_vol, 3200, 3600, 40);
+	if(charging) {
+		if(temp_vol >= 4100)
+			capacity_index = 90+calc_range(temp_vol, 4100, charging ? 4160 : 4140, 10);
+		else if(temp_vol >= 4000)
+			capacity_index = 80+calc_range(temp_vol, 4000, 4100, 10);
+		else
+			capacity_index = calc_range(temp_vol, 3200, 4000, 80);
+	}
+	else {
+		if(temp_vol >= 3900)
+			capacity_index = 90+calc_range(temp_vol, 3900, charging ? 4160 : 4140, 10);
+		else if(temp_vol >= 3800)
+			capacity_index = 80+calc_range(temp_vol, 3800, 3900, 10);
+		else if(temp_vol >= 3700)
+			capacity_index = 50+calc_range(temp_vol, 3700, 3800, 30);
+		else if(temp_vol >= 3600)
+			capacity_index = 0+calc_range(temp_vol, 3600, 3700, 30);
+		else
+			capacity_index = calc_range(temp_vol, 3200, 3600, 20);
+	}
+	
 	//	if(last_index != -1 && ((charging && capacity_index < last_index) || (!charging && capacity_index > last_index)))
 	//		capacity_index = last_index;
 #if 0		
