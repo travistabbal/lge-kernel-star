@@ -91,7 +91,7 @@
 #define CHG_IC_SET_DELAY        1500    // 1.5ms for RT9524
 //20100520, , Set Delay time of Charger setting [END]
 
-#define NVBATTERY_POLLING_INTERVAL 30 /* 90+300 seconds */ // Use with HZ(1sec) const
+#define NVBATTERY_POLLING_INTERVAL 60 /* 90+300 seconds */ // Use with HZ(1sec) const
 //20100929, , RTC setting for checking battery status during sleep
 #define SLEEP_BAT_CHECK_PERIOD 240 /* 90 + 2000 seconds */
 #define CRITICAL_BAT_CHECK_PERIOD 90 // second
@@ -1819,7 +1819,7 @@ static int calc_range(int value, int min, int max, int range)
 	if(spread <= 0)
 		return 0;
 	pct = (int) (((float) spread) / ((float) (max-min)) * range);
-	printk("calc_range: %d (%d - %d) over %d: %d\n", value, min, max, range, pct);
+	//	printk("calc_range: %d (%d - %d) over %d: %d\n", value, min, max, range, pct);
 	if(pct > range)
 		pct = range;
 	return pct;
@@ -1836,6 +1836,9 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 	int closest = 100;
 	int min_diff = 1000000;
 	int charging = (capacity_table == NULL) ? 0 : 1;
+	NvRmPmuAcLineStatus AcStatus = NvRmPmuAcLine_Offline;
+	NvU8 BatStatus = 0;
+	NvRmPmuBatteryData BatData;
 
 	// Make sure we don't sample more frequently than every four seconds
 	u64 now = jiffies_to_msecs(get_jiffies_64());
@@ -1845,8 +1848,8 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 		return;
 	}
 	
+	// If we have an obviously bogus reading, discard it (this happens at boot)
 	temp_vol = batt_dev->batt_vol;
-	// If we have an obviously bogus reading, discard it (this happens sometimes at boot)
 	if(temp_vol < 2000 || temp_vol > 4800) {
 		batt_dev->Capacity_Voltage = 32;
 		batt_dev->BatteryLifePercent = 32;
@@ -1858,6 +1861,12 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 		initialize_capacity();
 		temp_vol = batt_dev->batt_vol;
 		printk("Calc capacity: done re-reading vol, now %d\n", temp_vol);
+	}
+	else {
+		memset(&BatData, 0, sizeof(BatData));
+		NvRmPmuUpdateBatteryInfo(s_hRmGlobal, &AcStatus, &BatStatus, &BatData);
+		batt_dev->batt_vol = BatData.batteryVoltage;
+		temp_vol = batt_dev->batt_vol;
 	}
 	
 	capacity_table = capacity_table_unplugged; // @@@ Make sure percent doesn't jump around when unplugged
@@ -1884,11 +1893,11 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 	else if(temp_vol >= 3800)
 		capacity_index = 80+calc_range(temp_vol, 3800, 3900, 10);
 	else if(temp_vol >= 3600)
-		capacity_index = 30+calc_range(temp_vol, 3600, 3800, 50);
+		capacity_index = 40+calc_range(temp_vol, 3600, 3800, 40);
 	else
-		capacity_index = calc_range(temp_vol, 3200, 3600, 30);
-	if(last_index != -1 && ((charging && capacity_index < last_index) || (!charging && capacity_index > last_index)))
-		capacity_index = last_index;
+		capacity_index = calc_range(temp_vol, 3200, 3600, 40);
+	//	if(last_index != -1 && ((charging && capacity_index < last_index) || (!charging && capacity_index > last_index)))
+	//		capacity_index = last_index;
 #if 0		
 	//	capacity_table = capacity_table_ta; // @@@ Make sure percent doesn't jump around when unplugged
 	// Walk the capacity table looking for the closest voltage.
