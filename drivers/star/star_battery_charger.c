@@ -1800,7 +1800,7 @@ static void calc_capacity(char *src)
 		else if(temp_vol >= 3700)
 			capacity_index = 50+calc_range(temp_vol, 3700, 3800, 30);
 		else if(temp_vol >= 3600)
-			capacity_index = 0+calc_range(temp_vol, 3600, 3700, 30);
+			capacity_index = 20+calc_range(temp_vol, 3600, 3700, 30);
 		else
 			capacity_index = calc_range(temp_vol, 3200, 3600, 20);
 	}
