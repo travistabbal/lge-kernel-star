@@ -855,36 +855,6 @@ static void star_capacity_from_voltage_via_calculate(void)
 #endif	
 }
 
-static void true_valid_cbc_process(NvU32 cbc_value)
-{
-	static NvU32 display_cbc = 0;
-
-	if( batt_dev->BatteryLifePercent !=104 )									// at first process, do not update
-		previous_guage= batt_dev->BatteryLifePercent;		// save previous value
-		
-	batt_dev->CBC_Value = cbc_value;
-
-	if (cbc_value <= 0)
-		display_cbc = 1;
-	else if (cbc_value >= 92)
-		display_cbc = 100;
-	else
-		display_cbc = ( cbc_value * 100 / 92 );
-
-	batt_dev->BatteryLifePercent = display_cbc;
-	batt_dev->BatteryGauge = display_cbc;
-	batt_dev->BatteryGauge_on = NV_TRUE;
-
-	printk("[BATT] previous value = %d, current_value=%d\n", previous_guage , batt_dev->BatteryLifePercent);
-	if( ((batt_dev->ACLineStatus == NV_FALSE) || (batt_dev->charger_state_machine == CHARGER_STATE_FULLBATTERY)) 
-		&& previous_guage< batt_dev->BatteryLifePercent   )
-	{
-		batt_dev->BatteryLifePercent = previous_guage;
-	}
-	printk("[BATT] final value = %d\n", batt_dev->BatteryLifePercent);
-	
-	star_battery_data_onetime_update(Update_Battery_Data);
-}
 
 static void valid_cbc_check_and_process(NvU32 cbc_value)
 {
@@ -1739,78 +1709,11 @@ static int star_at_command_get_property(struct power_supply *psy,
 
 //20100824, , get capacity using battery voltage for demo [START]
 #if defined (USE_ONETIME_VOLTAGE_CAPACITY)
-static NvBool valid_capacity_gauge(void)
-{
-	NvU32 capacity_gauge_temp;
-
-	star_batt_dev->BatteryLifePercent = batt_dev->BatteryLifePercent;
-
-	if (batt_dev->Capacity_first_time)
-	{
-		batt_dev->Capacity_first_time = NV_FALSE; // Let Capacity_first_time to NV_FALSE here only. It is require for determine capacity from battery voltage in first time, No dependent to previous voltage level
-		if (batt_dev->BatteryGauge_on == NV_FALSE)
-			batt_dev->BatteryLifePercent = STAR_BAT_MIN(batt_dev->Capacity_Voltage + 3 , 100);
-		star_batt_dev->BatteryLifePercent = batt_dev->BatteryLifePercent;
-	}
-	else
-	{
-		if (batt_dev->ACLineStatus == NV_TRUE)
-		{
-			if (batt_dev->BatteryLifePercent >= batt_dev->Capacity_Voltage)
-			{
-				capacity_gauge_temp = batt_dev->BatteryLifePercent;
-			}
-			else // higher then previous gauge
-			{
-				capacity_gauge_temp = batt_dev->BatteryLifePercent + 1; // Gauge tracking is juct one step!
-			}
-		}
-		else // batt_dev->ACLineStatus == NV_FALSE
-		{
-			if (batt_dev->BatteryLifePercent <= batt_dev->Capacity_Voltage)
-			{
-				capacity_gauge_temp = batt_dev->BatteryLifePercent;
-			}
-			else
-			{
-				capacity_gauge_temp = batt_dev->BatteryLifePercent - 1; // Gauge tracking is juct one step!
-			}
-		}
-
-		if (batt_dev->BatteryGauge_on == NV_FALSE)
-		{
-			batt_dev->BatteryLifePercent = capacity_gauge_temp;
-		if (STAR_BAT_MAX(batt_dev->BatteryGauge, batt_dev->Capacity_Voltage) - STAR_BAT_MIN(batt_dev->BatteryGauge, batt_dev->Capacity_Voltage) <= 5)
-		{
-			batt_dev->BatteryLifePercent = batt_dev->BatteryGauge;
-			batt_dev->BatteryGauge_on = NV_TRUE;
-		}
-		}
-	}
-
-	if (batt_dev->BatteryLifePercent < 0)
-	{
-		batt_dev->BatteryLifePercent = 0;
-		LDB("[Critical] Capacity gauging has exceptinal value!!!: below 0");
-	}
-	else if (batt_dev->BatteryLifePercent > 100)
-	{
-		batt_dev->BatteryLifePercent = 100;
-		LDB("[Critical] Capacity gauging has exceptinal value!!!: above 100");
-	}
-
-	return NV_TRUE;
-}
-
-static NvU16 capacity_table_usb[101] = BAT_CV_USB_TABLE;
-static NvU16 capacity_table_ta[101] = BAT_CV_TA_TABLE;
-static NvU16 capacity_table_unplugged[101] = BAT_CV_TABLE;
 
 #define MAX_BAT_SAMPLES 8
 static u64 bat_samples[MAX_BAT_SAMPLES];
 static u64 last_update = 0;
 static int last_index = -1;
-static NvU16 *last_table = NULL;
 
 static int calc_range(int value, int min, int max, int range)
 {
@@ -1826,16 +1729,14 @@ static int calc_range(int value, int min, int max, int range)
 }
 
 static int initial_read = 1;
+static int last_charging = 0;
 
-
-static void calc_capacity(NvU16 *capacity_table, char *src)
+static void calc_capacity(char *src)
 {
 	static NvU8 capacity_index = 0;
 	static NvU32 temp_vol;
 	int i;
-	int closest = 100;
-	int min_diff = 1000000;
-	int charging = (capacity_table == NULL) ? 0 : 1;
+	int charging = (src ? 1 : 0);
 	NvRmPmuAcLineStatus AcStatus = NvRmPmuAcLine_Offline;
 	NvU8 BatStatus = 0;
 	NvRmPmuBatteryData BatData;
@@ -1855,23 +1756,13 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 		batt_dev->BatteryLifePercent = 32;
 		return;
 	}
-	if(initial_read) {
-		initial_read = false;
-		printk("Calc capacity: re-reading vol, now %d\n", temp_vol);
-		initialize_capacity();
-		temp_vol = batt_dev->batt_vol;
-		printk("Calc capacity: done re-reading vol, now %d\n", temp_vol);
-	}
-	else {
-		memset(&BatData, 0, sizeof(BatData));
-		NvRmPmuUpdateBatteryInfo(s_hRmGlobal, &AcStatus, &BatStatus, &BatData);
-		batt_dev->batt_vol = BatData.batteryVoltage;
-		temp_vol = batt_dev->batt_vol;
-	}
+	memset(&BatData, 0, sizeof(BatData));
+	NvRmPmuUpdateBatteryInfo(s_hRmGlobal, &AcStatus, &BatStatus, &BatData);
+	batt_dev->batt_vol = BatData.batteryVoltage;
+	temp_vol = batt_dev->batt_vol;
 	
-	capacity_table = capacity_table_unplugged; // @@@ Make sure percent doesn't jump around when unplugged
 	// Smooth the reading by averaging over the last MAX_BAT_SAMPLES
-	if(last_update && last_table == capacity_table) {
+	if(last_update && (last_charging == charging)) {
 		// Age off the oldest sample by shifting the array up; calculate the average in the same pass through the array.
 		int c = 0;
 		for(i=(MAX_BAT_SAMPLES-1); i > 0; i--) {
@@ -1883,36 +1774,39 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 		temp_vol = (c / MAX_BAT_SAMPLES);
 	}
 	else {
+		printk("Calc capacity: re-reading vol, now %d\n", temp_vol);
+		initialize_capacity();
+		temp_vol = batt_dev->batt_vol;
+		printk("Calc capacity: done re-reading vol, now %d\n", temp_vol);
 		// No samples yet - or the capacity table has changed - initialize the sample array.
 		for(i=(MAX_BAT_SAMPLES-1); i >= 0; i--)
 			bat_samples[i] = temp_vol;
 	}
-	last_table = capacity_table;
-	if(temp_vol >= 3900)
-		capacity_index = 90+calc_range(temp_vol, 3900, 4200, 10);
-	else if(temp_vol >= 3800)
-		capacity_index = 80+calc_range(temp_vol, 3800, 3900, 10);
-	else if(temp_vol >= 3600)
-		capacity_index = 40+calc_range(temp_vol, 3600, 3800, 40);
-	else
-		capacity_index = calc_range(temp_vol, 3200, 3600, 40);
-	//	if(last_index != -1 && ((charging && capacity_index < last_index) || (!charging && capacity_index > last_index)))
-	//		capacity_index = last_index;
-#if 0		
-	//	capacity_table = capacity_table_ta; // @@@ Make sure percent doesn't jump around when unplugged
-	// Walk the capacity table looking for the closest voltage.
-	for (capacity_index = 100; capacity_index >= 0 ; capacity_index--) {
-		int diff = abs((capacity_table[capacity_index] - temp_vol));
-		if(diff < min_diff) {
-			min_diff = diff;
-			closest = capacity_index;
-		}
-		if (capacity_table[capacity_index] <= temp_vol)
-			break;
+	if(charging) {
+		if(temp_vol >= 4100)
+			capacity_index = 85+calc_range(temp_vol, 4100, 4180, 15);
+		else if(temp_vol >= 4000)
+			capacity_index = 75+calc_range(temp_vol, 4000, 4100, 10);
+		else if(temp_vol >= 3600)
+			capacity_index = 50+calc_range(temp_vol, 3600, 4000, 25);
+		else
+			capacity_index = calc_range(temp_vol, 3200, 3600, 50);
 	}
-	capacity_index = closest;
-#endif
+	else {
+		if(temp_vol >= 3900)
+			capacity_index = 90+calc_range(temp_vol, 3900, 4140, 10);
+		else if(temp_vol >= 3800)
+			capacity_index = 80+calc_range(temp_vol, 3800, 3900, 10);
+		else if(temp_vol >= 3700)
+			capacity_index = 50+calc_range(temp_vol, 3700, 3800, 30);
+		else if(temp_vol >= 3600)
+			capacity_index = 0+calc_range(temp_vol, 3600, 3700, 30);
+		else
+			capacity_index = calc_range(temp_vol, 3200, 3600, 20);
+	}
+	
 	printk("[%s] Calc capacity: raw %dmv, smoothed %dmv, %d%%\n",  src == NULL ? "DISCHARGING Battery" : src, batt_dev->batt_vol, temp_vol, capacity_index);
+	batt_dev->batt_vol = temp_vol;
 	if(capacity_index < 0) {
 		lprintk(D_BATT, "%s: [Critical] Unexpected Battery gauge value!!!(%d) \n", __func__, capacity_index);
 		capacity_index = 30;
@@ -1921,23 +1815,24 @@ static void calc_capacity(NvU16 *capacity_table, char *src)
 	batt_dev->BatteryLifePercent = capacity_index;
 	last_index = capacity_index;
 	last_update = now;
+	last_charging = charging;
 }
 
 static NvBool capacity_with_charger_source_USB(void)
 {
-	calc_capacity(capacity_table_usb, "CHARGING USB");
+	calc_capacity("CHARGING USB");
 	return NV_TRUE;
 }
 
 static NvBool capacity_with_charger_source_TA(void)
 {
-	calc_capacity(capacity_table_ta, "CHARGING AC");
+	calc_capacity("CHARGING AC");
 	return NV_TRUE;
 }
 
 static NvBool capacity_without_charger_source(void)
 {
-	calc_capacity(capacity_table_unplugged, NULL);
+	calc_capacity(NULL);
 	return NV_TRUE;
 }
 
@@ -1992,21 +1887,19 @@ static NvBool initialize_capacity(void)
 	NvRmPmuAcLineStatus AcStatus = NvRmPmuAcLine_Offline;
 	NvU8 BatStatus = 0;
 	NvRmPmuBatteryData BatData = {0};
-	NvU32 Average_Vol = 0, Average_count, Valid_count = 0;
-
-	for (Average_count = 0; Average_count < 7; Average_count++)
-	{
+	int count;
+	int vol = 0;
+	for (count = 0; count < 8; count++) {
 		// Warning!! NvRmPmuUpdateBatteryInfo operate correctly, but return value is false.. why??
 		// Never use "if (!func)" for NvRmPmuUpdatebatteryInfo.....  , 2010-10-14
 		memset(&BatData, 0, sizeof(BatData));
 		NvRmPmuUpdateBatteryInfo(s_hRmGlobal, &AcStatus, &BatStatus, &BatData);
-		if ((2500 < BatData.batteryVoltage) && (BatData.batteryVoltage < 4500))
-		{
-			Average_Vol += BatData.batteryVoltage; // Already in [mV] scale..
-			Valid_count++;
+		if ((2500 < BatData.batteryVoltage) && (BatData.batteryVoltage < 4500)) {
+			if(BatData.batteryVoltage > vol)
+				vol = BatData.batteryVoltage;
 		}
 	}
-	batt_dev->batt_vol = (NvU32)(Average_Vol/Valid_count); // Booting time, current consumption is high, so determine capacity with bias...
+	batt_dev->batt_vol = vol;
 	batt_dev->vol_for_capacity = batt_dev->batt_vol + 200;
 	return NV_TRUE;
 }
