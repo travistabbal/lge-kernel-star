@@ -8,6 +8,11 @@ choice
        depends on MACH_STAR
 endchoice
 
+config STOCK_VOLTAGE
+	bool "stock voltage values"
+	depends on MACH_STAR
+	default n
+
 config STAR_PMIC
 	bool "star pmic test"
 	depends on MACH_STAR
