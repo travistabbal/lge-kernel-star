@@ -325,9 +325,9 @@ void irq_exit(void)
 	if (!in_interrupt() && local_softirq_pending())
 		invoke_softirq();
 
+	rcu_irq_exit();
 #ifdef CONFIG_NO_HZ
 	/* Make sure that timer wheel updates are propagated */
-	rcu_irq_exit();
 	if (idle_cpu(smp_processor_id()) && !in_interrupt() && !need_resched())
 		tick_nohz_stop_sched_tick(0);
 #endif
@@ -523,22 +523,17 @@ EXPORT_SYMBOL(tasklet_kill);
  */
 
 /*
- * The trampoline is called when the hrtimer expires. If this is
- * called from the hrtimer interrupt then we schedule the tasklet as
- * the timer callback function expects to run in softirq context. If
- * it's called in softirq context anyway (i.e. high resolution timers
- * disabled) then the hrtimer callback is called right away.
+ * The trampoline is called when the hrtimer expires. It schedules a tasklet
+ * to run __tasklet_hrtimer_trampoline() which in turn will call the intended
+ * hrtimer callback, but from softirq context.
  */
 static enum hrtimer_restart __hrtimer_tasklet_trampoline(struct hrtimer *timer)
 {
 	struct tasklet_hrtimer *ttimer =
 		container_of(timer, struct tasklet_hrtimer, timer);
 
-	if (hrtimer_is_hres_active(timer)) {
-		tasklet_hi_schedule(&ttimer->tasklet);
-		return HRTIMER_NORESTART;
-	}
-	return ttimer->function(timer);
+	tasklet_hi_schedule(&ttimer->tasklet);
+	return HRTIMER_NORESTART;
 }
 
 /*
