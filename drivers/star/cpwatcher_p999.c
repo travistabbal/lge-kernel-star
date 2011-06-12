@@ -49,24 +49,27 @@
 #endif /* CONFIG_MACH_STAR */
 
 
-
-#if defined(CONFIG_DEBUG_FS)
-
-#include <linux/debugfs.h>
-
 #define ENABLE_DEBUG_MESSAGE 0x01
 #define ENABLE_TEST_MODE 0x02
+static int debug_enable_flag = 0;//Release
+
+//#if defined(CONFIG_DEBUG_FS)
+
+//#include <linux/debugfs.h>
+
+//#define ENABLE_DEBUG_MESSAGE 0x01
+//#define ENABLE_TEST_MODE 0x02
 
 
 //#define CPW_SIMPLE_DEBUG
 
-#ifdef CPW_SIMPLE_DEBUG
-static int debug_enable_flag = 1;//Debug
-#else
-static int debug_enable_flag = 0;//Release
-#endif
+//#ifdef CPW_SIMPLE_DEBUG
+//static int debug_enable_flag = 1;//Debug
+//#else
+//static int debug_enable_flag = 0;//Release
+//#endif
 
-#endif//CONFIG_DEBUG_FS
+//#endif//CONFIG_DEBUG_FS
 
 #if defined (CONFIG_STAR_HIDDEN_RESET)
 #include <asm/uaccess.h>

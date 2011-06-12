@@ -346,10 +346,10 @@ LINUXINCLUDE    := -Iinclude \
 KBUILD_CPPFLAGS := -D__KERNEL__
 
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
-		   -fno-strict-aliasing -fno-common \
-		   -Werror-implicit-function-declaration \
-		   -Wno-format-security \
-		   -fno-delete-null-pointer-checks
+		   -fno-strict-aliasing -fno-common 
+#		   -Werror-implicit-function-declaration \
+#		   -Wno-format-security \
+#		   -fno-delete-null-pointer-checks
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
@@ -537,24 +537,11 @@ KBUILD_CFLAGS += $(call cc-option,-Wframe-larger-than=${CONFIG_FRAME_WARN})
 endif
 
 # Force gcc to behave correct even for buggy distributions
-ifndef CONFIG_CC_STACKPROTECTOR
+# ifndef CONFIG_CC_STACKPROTECTOR
 KBUILD_CFLAGS += $(call cc-option, -fno-stack-protector)
-endif
+# endif
 
-ifdef CONFIG_FRAME_POINTER
-KBUILD_CFLAGS	+= -fno-omit-frame-pointer -fno-optimize-sibling-calls
-else
 KBUILD_CFLAGS	+= -fomit-frame-pointer
-endif
-
-ifdef CONFIG_DEBUG_INFO
-KBUILD_CFLAGS	+= -g
-KBUILD_AFLAGS	+= -gdwarf-2
-endif
-
-ifdef CONFIG_FUNCTION_TRACER
-KBUILD_CFLAGS	+= -pg
-endif
 
 # We trigger additional mismatches with less inlining
 ifdef CONFIG_DEBUG_SECTION_MISMATCH
