@@ -54,6 +54,8 @@
 
 #include <linux/debugfs.h>
 
+#endif//CONFIG_DEBUG_FS
+
 #define ENABLE_DEBUG_MESSAGE 0x01
 #define ENABLE_TEST_MODE 0x02
 
@@ -66,13 +68,12 @@ static int debug_enable_flag = 1;//Debug
 static int debug_enable_flag = 0;//Release
 #endif
 
-#endif//CONFIG_DEBUG_FS
 
 
 /*
  * Debug
  */
-#define DEBUG_CP
+// #define DEBUG_CP
 #ifdef DEBUG_CP
 #define DBG(x...) if (debug_enable_flag & ENABLE_DEBUG_MESSAGE) { \
 						printk(x); \

@@ -139,7 +139,7 @@ struct tegra_pingroup_desc {
 //20100724  for gpio setting while sleep [LGE_START]
 #define APPLY_SLEEP_GPIO_TABLE	1
 #define SLEEP_GPIO_LOG	0
-#define APPLY_GPIO_INIT	1
+#define APPLY_GPIO_INIT	0
 
 typedef enum {
 	TRISTATE = 0,
