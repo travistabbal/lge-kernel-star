@@ -98,14 +98,14 @@ extern void read_screen_shot_reserved_buffer(unsigned char *buf, size_t len);
 /*
  * Debug
  */
-#define DEBUG_CP
-#ifdef DEBUG_CP
-#define DBG(x...) if (debug_enable_flag & ENABLE_DEBUG_MESSAGE) { \
+//#undef DEBUG_CP
+//#ifdef DEBUG_CP
+//#define DBG(x...) if (debug_enable_flag & ENABLE_DEBUG_MESSAGE) { \
 						printk(x); \
 				  }
-#else
+//#else
 #define DBG(x...) do { } while(0)
-#endif
+//#endif
 
 
 #if !defined(TRUE)
