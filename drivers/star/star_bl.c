@@ -93,7 +93,7 @@ static int debug_enable_flag = 0x01;
  */
 #define BL_HW_RESET_DELAY 100 //us
 #define BL_INTENSITY_MAX 0x16
-#define BL_DEFAULT_LSENSOR_POLL_TIME msecs_to_jiffies(1000)
+#define BL_DEFAULT_LSENSOR_POLL_TIME msecs_to_jiffies(1500)
 #define BL_FADE_IN_DELAY 400
 #define BL_FADE_OUT_DELAY 400
 
@@ -858,7 +858,7 @@ star_bl_store_alc(struct device *dev, struct device_attribute *attr, const char 
 	} else {
 
 		next_mode = AAT2870_OP_MODE_NORMAL;
-		restore_value = -1;
+//		restore_value = -1;
 		/* Run one reset cycle in a bit... */
 		schedule_delayed_work(&drv->delayed_work_bl, msecs_to_jiffies(5000));
 	}
