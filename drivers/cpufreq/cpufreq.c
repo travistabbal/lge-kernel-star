@@ -683,14 +683,14 @@ static ssize_t show_frequency_voltage_table(struct cpufreq_policy *policy, char 
 
 	for( i=fake_CpuShmoo.ShmooVmaxIndex; i>-1; i-- )
 	{
-		table += sprintf(table, "%d %d %d\n", fake_CpuShmoo.pScaledCpuLimits->MaxKHzList[i], fake_CpuShmoo.ShmooVoltages[i], fake_CpuShmoo.ShmooVoltages[i] );
-//		table += sprintf(table, "%d %d %d\n", fake_CpuShmoo.pScaledCpuLimits->MaxKHzList[i], fake_CpuShmoo.ShmooVoltages[i], fake_CpuShmoo.ShmooVoltages[i] - FakeShmoo_UV_mV_Ptr[i] );
+//		table += sprintf(table, "%d %d %d\n", fake_CpuShmoo.pScaledCpuLimits->MaxKHzList[i], fake_CpuShmoo.ShmooVoltages[i], fake_CpuShmoo.ShmooVoltages[i] );
+		table += sprintf(table, "%d %d %d\n", fake_CpuShmoo.pScaledCpuLimits->MaxKHzList[i], fake_CpuShmoo.ShmooVoltages[i], fake_CpuShmoo.ShmooVoltages[i] - FakeShmoo_UV_mV_Ptr[i] );
 	}
 	return table - buf;
 }
 
 
-/*static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
+static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 {
 	int i;
 	char *table = buf;
@@ -701,9 +701,9 @@ static ssize_t show_frequency_voltage_table(struct cpufreq_policy *policy, char 
 	}
 	table += sprintf(table, "\n" );
 	return table - buf;
-}*/
+}
 
-/*static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, const char *buf, size_t count)
+static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, const char *buf, size_t count)
 {
 	int ret = sscanf( buf, "%i %i %i %i %i %i %i %i", &FakeShmoo_UV_mV_Ptr[7], &FakeShmoo_UV_mV_Ptr[6], 
 								&FakeShmoo_UV_mV_Ptr[5], &FakeShmoo_UV_mV_Ptr[4], 
@@ -714,7 +714,7 @@ static ssize_t show_frequency_voltage_table(struct cpufreq_policy *policy, char 
 
 	return count;
 }
-*/
+
 
 //added to expose the normal scaling_available_frequencies, thanks to vork
 static ssize_t show_scaling_available_frequencies(struct cpufreq_policy *policy, char *buf)
@@ -760,7 +760,7 @@ define_one_rw(scaling_setspeed);
 define_one_ro(cpu_temp);
 define_one_ro(frequency_voltage_table);
 define_one_ro(scaling_available_frequencies); //added to expose the normal scaling_available_frequencies, thanks to vork
-//define_one_rw(UV_mV_table);
+define_one_rw(UV_mV_table);
 #endif // USE_FAKE_SHMOO
 
 static struct attribute *default_attrs[] = {
@@ -779,7 +779,7 @@ static struct attribute *default_attrs[] = {
 	&cpu_temp.attr,
 	&frequency_voltage_table.attr,
 	&scaling_available_frequencies.attr, //morfic add, check
-//	&UV_mV_table.attr,
+	&UV_mV_table.attr,
 #endif // USE_FAKE_SHMOO
 	NULL
 };

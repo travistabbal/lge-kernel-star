@@ -2248,7 +2248,7 @@ DvsChangeCpuVoltage(
     NvRmDvs* pDvs,
     NvRmMilliVolts TargetMv)
 {
-#ifdef MORFICDISABLED_USE_FAKE_SHMOO
+#ifdef USE_FAKE_SHMOO
 	// Voltage hack
 	int i = 0;
 	if( FakeShmoo_UV_mV_Ptr != NULL )
