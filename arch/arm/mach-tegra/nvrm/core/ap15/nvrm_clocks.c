@@ -1094,7 +1094,7 @@ NvRmPrivClocksInit(NvRmDeviceHandle hRmDevice)
         //}
         //else if (env == ExecPlatform_Soc)
         //{
-            NvRmPrivClockSourceFreqInit(hRmDevice, s_ClockSourceFreq); //we should have to keep this, not just reset
+        //    NvRmPrivClockSourceFreqInit(hRmDevice, s_ClockSourceFreq); //we should have to keep this, not just reset
         //}
         //else
         //{

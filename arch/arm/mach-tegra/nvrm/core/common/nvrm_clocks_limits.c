@@ -252,7 +252,7 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
             break;
         }
     }
-
+	AvpMaxKHz = 256000;
     for (i = 0; i < NvRmPrivModuleID_Num; i++)
     {
         NvRmModuleInstance *inst;
@@ -305,9 +305,22 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
 
     // Set AVP upper clock boundary with combined Absolute/Scaled limit;
     // Sync System clock with AVP (System is not in relocation table)
-    s_ClockRangeLimits[NvRmModuleID_Avp].MaxKHz = AvpMaxKHz;
-    s_ClockRangeLimits[NvRmPrivModuleID_System].MaxKHz =
-        s_ClockRangeLimits[NvRmModuleID_Avp].MaxKHz;
+   s_ClockRangeLimits[NvRmModuleID_Avp].MaxKHz = AvpMaxKHz;
+
+    NvOsDebugPrintf(
+            "avpmaxkhz:%d\n",
+            s_ClockRangeLimits[NvRmModuleID_Avp].MaxKHz);
+
+   NvOsDebugPrintf(
+            "system khz before:%d\n",
+            s_ClockRangeLimits[NvRmPrivModuleID_System].MaxKHz);
+
+     s_ClockRangeLimits[NvRmPrivModuleID_System].MaxKHz =
+         s_ClockRangeLimits[NvRmModuleID_Avp].MaxKHz;
+   NvOsDebugPrintf(
+            "system khz after:%d\n",
+            s_ClockRangeLimits[NvRmPrivModuleID_System].MaxKHz);
+
     s_ClockRangeLimits[NvRmPrivModuleID_System].MinKHz =
         s_ClockRangeLimits[NvRmModuleID_Avp].MinKHz;
     s_pClockScales[NvRmPrivModuleID_System] = s_pClockScales[NvRmModuleID_Avp];
@@ -322,6 +335,7 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
     {
         NV_ASSERT(VdeMaxKHz == AvpMaxKHz);
     }
+    VdeMaxKHz = 256000;
     s_ClockRangeLimits[NvRmModuleID_Vde].MaxKHz = VdeMaxKHz;
 
     // Set upper clock boundaries for devices on CPU bus (CPU, Mselect,
@@ -360,14 +374,42 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
         NVRM_SDRAM_MIN_KHZ * 2;
     s_ClockRangeLimits[NvRmPrivModuleID_ExternalMemory].MaxKHz =
         pSKUedLimits->Emc2xMaxKHz / 2;
+    NvOsDebugPrintf(
+            "External Memory Maxkhz before:%d\n",
+            s_ClockRangeLimits[NvRmPrivModuleID_ExternalMemory].MaxKHz);
+
+    s_ClockRangeLimits[NvRmPrivModuleID_ExternalMemory].MaxKHz += 20000;
+    NvOsDebugPrintf(
+            "External Memory Maxkhz after:%d\n",
+            s_ClockRangeLimits[NvRmPrivModuleID_ExternalMemory].MaxKHz);
+
     s_ClockRangeLimits[NvRmPrivModuleID_ExternalMemory].MinKHz =
         NVRM_SDRAM_MIN_KHZ;
 
     // Set 3D upper clock boundary with combined Absolute/Scaled limit.
     TDMaxKHz = pSKUedLimits->TDMaxKHz;
+    NvOsDebugPrintf(
+            "TDMaxKHz before NV_MIN:%d\n",
+            TDMaxKHz);
+
+
     TDMaxKHz = NV_MIN(
         TDMaxKHz, s_ClockRangeLimits[NvRmModuleID_3D].MaxKHz);
-    s_ClockRangeLimits[NvRmModuleID_3D].MaxKHz = TDMaxKHz;
+    NvOsDebugPrintf(
+            "TDMaxKHz after NV_MIN:%d\n",
+            TDMaxKHz);
+
+
+    s_ClockRangeLimits[NvRmModuleID_3D].MaxKHz = TDMaxKHz ;
+    NvOsDebugPrintf(
+            "NvRmModuleID_3D.MaxKHz before:%d\n",
+            s_ClockRangeLimits[NvRmModuleID_3D].MaxKHz);
+
+    s_ClockRangeLimits[NvRmModuleID_3D].MaxKHz = 340000;
+    NvOsDebugPrintf(
+            "NvRmModuleID_3D.MaxKHz after:%d\n",
+            s_ClockRangeLimits[NvRmModuleID_3D].MaxKHz);
+
 
     // Set Display upper clock boundary with combined Absolute/Scaled limit.
     // (fill in clock limits for both display heads)
@@ -377,10 +419,20 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
         DispMaxKHz, s_ClockRangeLimits[NvRmModuleID_Display].MaxKHz);
     s_ClockRangeLimits[NvRmClkLimitsExtID_DisplayA].MaxKHz =
         NV_MIN(DispMaxKHz, pSKUedLimits->DisplayAPixelMaxKHz);
+    NvOsDebugPrintf(
+            "s_ClockRangeLimits[NvRmClkLimitsExtID_DisplayA].MaxKHz: %d\n",
+            s_ClockRangeLimits[NvRmClkLimitsExtID_DisplayA].MaxKHz);
+
+
     s_ClockRangeLimits[NvRmClkLimitsExtID_DisplayA].MinKHz =
             s_ClockRangeLimits[NvRmModuleID_Display].MinKHz;
     s_ClockRangeLimits[NvRmClkLimitsExtID_DisplayB].MaxKHz =
         NV_MIN(DispMaxKHz, pSKUedLimits->DisplayBPixelMaxKHz);
+    NvOsDebugPrintf(
+            "s_ClockRangeLimits[NvRmClkLimitsExtID_DisplayB].MaxKHz: %d\n",
+            s_ClockRangeLimits[NvRmClkLimitsExtID_DisplayB].MaxKHz);
+
+
     s_ClockRangeLimits[NvRmClkLimitsExtID_DisplayB].MinKHz =
             s_ClockRangeLimits[NvRmModuleID_Display].MinKHz;
 

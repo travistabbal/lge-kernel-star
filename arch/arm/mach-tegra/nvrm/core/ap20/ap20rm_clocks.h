@@ -46,10 +46,10 @@ extern const NvRmModuleClockInfo g_Ap20ModuleClockTable[];
 extern const NvU32 g_Ap20ModuleClockTableSize;
 
 // Minimum PLLX VCO frequency for reliable operation of DCC circuit
-#define NVRM_PLLX_DCC_VCO_MIN (600000)
+#define NVRM_PLLX_DCC_VCO_MIN (640000)
 
 // Default PLLC output frequency
-#define NVRM_PLLC_DEFAULT_FREQ_KHZ (600000)
+#define NVRM_PLLC_DEFAULT_FREQ_KHZ (640000)
 
 // Defines number of EMC frequency steps for DFS 
 #define NVRM_AP20_DFS_EMC_FREQ_STEPS (8)
@@ -58,7 +58,7 @@ extern const NvU32 g_Ap20ModuleClockTableSize;
 #define NVRM_AP20_APB_MAX_KHZ (125000)
 
 // Defines graphics Host frequency
-#define NVRM_AP20_HOST_KHZ (108000)
+#define NVRM_AP20_HOST_KHZ (116363)
 
 // Defines main clock doubler support
 #define NVRM_AP20_USE_OSC_DOUBLER (0)

@@ -36,7 +36,7 @@ static int save_return_addr(struct stackframe *frame, void *d)
 
 void *return_address(unsigned int level)
 {
-	struct return_address_data data;
+/*	struct return_address_data data;
 	struct stackframe frame;
 	register unsigned long current_sp asm ("sp");
 
@@ -51,7 +51,7 @@ void *return_address(unsigned int level)
 
 	if (!data.level)
 		return data.addr;
-	else
+	else*/
 		return NULL;
 }
 
