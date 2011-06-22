@@ -1005,7 +1005,7 @@ NvRmPrivContentProtectionFuses( NvRmDeviceHandle hRm )
 }
 
 // Safe PLLM (max 1000MHz) divider for GPU modules
-#define NVRM_SAFE_GPU_DIVIDER (10)
+#define NVRM_SAFE_GPU_DIVIDER (8)
 
 void
 NvRmPrivAp20Reset2D(NvRmDeviceHandle hRmDevice)
@@ -1145,16 +1145,16 @@ NvRmPrivAp20BasicReset( NvRmDeviceHandle rm )
          * For graphic clocks use PLLM_OUT0 as a source, and set divider
          * so that initial frequency is below maximum module limit
          */
-        NVRM_CONFIG_CLOCK(HOST1X, PLLM_OUT0, NVRM_SAFE_GPU_DIVIDER);
-        NVRM_CONFIG_CLOCK(EPP, PLLM_OUT0, NVRM_SAFE_GPU_DIVIDER);
-        NVRM_CONFIG_CLOCK(G2D, PLLM_OUT0, NVRM_SAFE_GPU_DIVIDER);
-        NVRM_CONFIG_CLOCK(G3D, PLLM_OUT0, NVRM_SAFE_GPU_DIVIDER);
-        NVRM_CONFIG_CLOCK(MPE, PLLM_OUT0, NVRM_SAFE_GPU_DIVIDER);
-        NVRM_CONFIG_CLOCK(VI, PLLM_OUT0, NVRM_SAFE_GPU_DIVIDER);
-        NVRM_CONFIG_CLOCK(VI_SENSOR, PLLM_OUT0, NVRM_SAFE_GPU_DIVIDER);
+        NVRM_CONFIG_CLOCK(HOST1X, PLLM_OUT0, 10 ); //NVRM_SAFE_GPU_DIVIDER);
+        NVRM_CONFIG_CLOCK(EPP, PLLM_OUT0, 10 ); //NVRM_SAFE_GPU_DIVIDER);
+        NVRM_CONFIG_CLOCK(G2D, PLLM_OUT0, 8 ); //NVRM_SAFE_GPU_DIVIDER);
+        NVRM_CONFIG_CLOCK(G3D, PLLM_OUT0, 10 ); //NVRM_SAFE_GPU_DIVIDER);
+        NVRM_CONFIG_CLOCK(MPE, PLLM_OUT0, 10 ); //NVRM_SAFE_GPU_DIVIDER);
+        NVRM_CONFIG_CLOCK(VI, PLLM_OUT0, 10 ); //NVRM_SAFE_GPU_DIVIDER);
+        NVRM_CONFIG_CLOCK(VI_SENSOR, PLLM_OUT0, 10 ); //NVRM_SAFE_GPU_DIVIDER);
 
         /* Using 144MHz for coresight */
-        NVRM_CONFIG_CLOCK(CSITE, PLLP_OUT0, 1);
+        //NVRM_CONFIG_CLOCK(CSITE, PLLP_OUT0, 1);
 
         NvOsWaitUS(NVRM_RESET_DELAY);
     }
@@ -1240,7 +1240,7 @@ NvRmPrivAp20OscDoublerConfigure(
 
 #define APBDEV_PMC_SCRATCH42_0_PCX_CLAMP_RANGE  0:0
 
-#define NVRM_PCIE_REF_FREQUENCY (12000)
+#define NVRM_PCIE_REF_FREQUENCY (11289)
 
 void NvRmPrivAp20PllEControl(NvRmDeviceHandle hRmDevice, NvBool Enable)
 {
