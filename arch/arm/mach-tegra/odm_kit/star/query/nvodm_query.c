@@ -347,8 +347,8 @@ static const NvOdmSdramControllerConfigAdv s_NvOdmStarSmartphoneHynixEmcConfigTa
     },
     {
                   0x20,   /* Rev 2.0 */
-                300000,   /* SDRAM frquency */
-                  1200,   /* EMC core voltage */
+                350000,   /* SDRAM frquency */
+                  1250,   /* EMC core voltage */
                     46,   /* Number of EMC parameters below */
         {
             0x00000012,   /* RC */
@@ -675,8 +675,8 @@ static const NvOdmSdramControllerConfigAdv s_NvOdmStarSmartphoneHynixEmcConfigTa
     },
     {
                   0x20,   /* Rev 2.0 */
-CONFIG_DDR2_SDRAM_FREQ,   /* SDRAM frquency */
-                  1200,   /* EMC core voltage */
+                350000,   /* SDRAM frquency */
+                  1250,   /* EMC core voltage */
                     46,   /* Number of EMC parameters below */
         {
 					  0x00000012,	/* RC */
@@ -771,9 +771,9 @@ static NvOdmWakeupPadInfo s_NvOdmWakeupPadInfo[] =
     {NV_FALSE,  7, NvOdmWakeupPadPolarity_AnyEdge}, // Wake Event  7 - gp3_pu[6] (VIB_PWM)
 #endif
     {NV_TRUE,   8, NvOdmWakeupPadPolarity_AnyEdge},    // Wake Event  8 - gmi_wp_n (BT_HOST_WAKEUP)
-    {NV_TRUE,   9, NvOdmWakeupPadPolarity_AnyEdge},     // Wake Event  9 - gp3_ps[2] (CHG_STATUS_N_AP20)
+    {NV_FALSE/*NV_TRUE*/,   9, NvOdmWakeupPadPolarity_AnyEdge},     // Wake Event  9 - gp3_ps[2] (CHG_STATUS_N_AP20)
     {NV_FALSE, 10, NvOdmWakeupPadPolarity_High},    // Wake Event 10 - gmi_ad21
-    {NV_TRUE,  11, NvOdmWakeupPadPolarity_Low},     // Wake Event 11 - spi2_cs2 (BATT_LOW_INT_N)
+    {NV_FALSE/*NV_TRUE*/,  11, NvOdmWakeupPadPolarity_Low},     // Wake Event 11 - spi2_cs2 (BATT_LOW_INT_N)
     {NV_FALSE, 12, NvOdmWakeupPadPolarity_Low},     // Wake Event 12 - spi2_cs1 (AUDIO_INT_N)
     {NV_TRUE/*NV_FALSE*/, 13, NvOdmWakeupPadPolarity_Low},     // Wake Event 13 - sdio1_dat1
     {NV_FALSE, 14, NvOdmWakeupPadPolarity_AnyEdge}, // Wake Event 14 - gp3_pv[6]
@@ -792,7 +792,7 @@ static NvOdmWakeupPadInfo s_NvOdmWakeupPadInfo[] =
     {NV_FALSE/*NV_TRUE*/, 27, NvOdmWakeupPadPolarity_High},    // Wake Event 27 - gp3_ps[0] (WLAN_HOST_WAKEUP_N)
     {NV_FALSE, 28, NvOdmWakeupPadPolarity_Low},     // Wake Event 28 - gp3_pq[6] (KB_ROW6)
     {NV_FALSE, 29, NvOdmWakeupPadPolarity_Low},     // Wake Event 29 - gp3_pq[7] (KB_ROW6)
-    {NV_FALSE, 30, NvOdmWakeupPadPolarity_High},    // Wake Event 30 - dap1_dout (DAP1_DOUT)
+    {NV_FALSE, 30, NvOdmWakeupPadPolarity_High}     // Wake Event 30 - dap1_dout (DAP1_DOUT)
 };
 #else
 #error STAR_HW not assigned
@@ -1460,15 +1460,14 @@ NvU32 NvOdmQueryMemSize(NvOdmMemoryType MemType)
     }
 }
 
-#define ONE_MB	0x00100000
 NvU32 NvOdmQueryCarveoutSize(void)
 {
     //20100802  increase carveout memory
-    return (CONFIG_GPU_MEM_CARVEOUT_SZ*ONE_MB);
+    return 0x08000000; // 128 MB <- 64MB
 }
 
 NvU32 NvOdmQuerySecureRegionSize(void)
 {
-    return (8*ONE_MB);// 8 MB
+    return 0x00800000;// 8 MB
 }
 

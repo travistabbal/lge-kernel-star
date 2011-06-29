@@ -42,7 +42,7 @@
 #include "ap15/project_relocation_table.h"
 
 #define USE_FAKE_SHMOO
-#define USE_FAKE_SHMOO_PSYCHO
+//#define USE_FAKE_SHMOO_PSYCHO
 
 #ifdef USE_FAKE_SHMOO
 #include <linux/kernel.h>
@@ -82,17 +82,17 @@ NvRmCpuShmoo fake_CpuShmoo; // Pointer to fake CpuShmoo values
 
 NvU32 FakeShmooVmaxIndex = 7; // Max voltage index in the voltage tab (size-1)
 
-#define MAX_OVERCLOCK (1500000)
+#define MAX_OVERCLOCK (1540666)
 
 NvU32 FakeShmooVoltages[] = {
     750,
     800,
-    850,
-    950,
-    1050,
-    1150,
-    1250,
-    1350,
+    900,
+    975,
+    1075,
+    1175,
+    1275,
+    1375,
 };
 
 NvRmScaledClkLimits FakepScaledCpuLimits = {
@@ -108,7 +108,7 @@ NvRmScaledClkLimits FakepScaledCpuLimits = {
 	1100000,
 	1200000,
 	1400000,
-	1500000,
+	1540666,
     }
 };
 
@@ -116,10 +116,10 @@ NvRmScaledClkLimits FakepScaledCpuLimits = {
 #define MAX_OVERCLOCK (1100000)
 NvU32 FakeShmooVmaxIndex = 5; // Max voltage index in the voltage tab (size-1)
 NvU32 FakeShmooVoltages[] = {
-    700,
-    800,
+    725,
+    750,
+    775,
     850,
-    900,
     950,
     1050,
 };
@@ -242,7 +242,7 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
     // Combine AVP/System clock absolute limit with scaling V/F ladder upper
     // boundary, and set default clock range for all present modules the same
     // as for AVP/System clock
-    AvpMaxKHz = pSKUedLimits->AvpMaxKHz;
+/*    AvpMaxKHz = pSKUedLimits->AvpMaxKHz;
     for (i = 0; i < pShmoo->ScaledLimitsListSize; i++)
     {
         if (pHwLimits[i].HwDeviceId == NV_DEVID_AVP)
@@ -251,8 +251,8 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
                 AvpMaxKHz, pHwLimits[i].MaxKHzList[pShmoo->ShmooVmaxIndex]);
             break;
         }
-    }
-	AvpMaxKHz = 256000;
+    }*/
+	AvpMaxKHz = 280000;
     for (i = 0; i < NvRmPrivModuleID_Num; i++)
     {
         NvRmModuleInstance *inst;
@@ -285,10 +285,25 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
         {
             s_ClockRangeLimits[id].MinKHz = pHwLimits[i].MinKHz;
             s_ClockRangeLimits[id].MaxKHz =
-                pHwLimits[i].MaxKHzList[pShmoo->ShmooVmaxIndex];
+                pHwLimits[i].MaxKHzList[pShmoo->ShmooVmaxIndex]; //morficlookhere
             s_pClockScales[id] = pHwLimits[i].MaxKHzList;
+
+        NvOsDebugPrintf(
+            "pHwLimits[%d].MaxKHzList[pShmoo->ShmooVmaxIndex]:%d s_pClockScales[%d]\n",
+            i,pHwLimits[i].MaxKHzList[pShmoo->ShmooVmaxIndex],id);
+	
+
         }
     }
+	NvOsDebugPrintf(
+            "NvRmModuleID_Avp:%d NvRmModuleID_Cpu:%d\n",
+            NvRmModuleID_Avp,NvRmModuleID_Cpu);
+
+s_ClockRangeLimits[2].MaxKHz = 280000;
+s_ClockRangeLimits[7].MaxKHz = 350000;
+s_ClockRangeLimits[8].MaxKHz = 366666;
+s_ClockRangeLimits[10].MaxKHz = 350000;
+
     // Fill in CPU scaling data if SoC has dedicated CPU rail, and CPU clock
     // characterization data is separated from other modules on common core rail
     if (s_ChipFlavor.pCpuShmoo)
@@ -302,6 +317,8 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
             pCpuLimits->MaxKHzList[s_ChipFlavor.pCpuShmoo->ShmooVmaxIndex];
         s_pClockScales[NvRmModuleID_Cpu] = pCpuLimits->MaxKHzList;
     }
+
+ NvOsDebugPrintf("s_ClockRangeLimits[NvRmModuleID_Cpu].MaxKHz = %d", s_ClockRangeLimits[NvRmModuleID_Cpu].MaxKHz);
 
     // Set AVP upper clock boundary with combined Absolute/Scaled limit;
     // Sync System clock with AVP (System is not in relocation table)
@@ -328,14 +345,14 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
     // Set VDE upper clock boundary with combined Absolute/Scaled limit (on
     // AP15/Ap16 VDE clock derived from the system bus, and VDE maximum limit
     // must be the same as AVP/System).
-    VdeMaxKHz = pSKUedLimits->VdeMaxKHz;
-    VdeMaxKHz = NV_MIN(
-        VdeMaxKHz, s_ClockRangeLimits[NvRmModuleID_Vde].MaxKHz);
-    if ((hRmDevice->ChipId.Id == 0x15) || (hRmDevice->ChipId.Id == 0x16))
-    {
-        NV_ASSERT(VdeMaxKHz == AvpMaxKHz);
-    }
-    VdeMaxKHz = 256000;
+//    VdeMaxKHz = pSKUedLimits->VdeMaxKHz;
+//    VdeMaxKHz = NV_MIN(
+//        VdeMaxKHz, s_ClockRangeLimits[NvRmModuleID_Vde].MaxKHz);
+//    if ((hRmDevice->ChipId.Id == 0x15) || (hRmDevice->ChipId.Id == 0x16))
+//    {
+//        NV_ASSERT(VdeMaxKHz == AvpMaxKHz);
+//    }
+    VdeMaxKHz = AvpMaxKHz;
     s_ClockRangeLimits[NvRmModuleID_Vde].MaxKHz = VdeMaxKHz;
 
     // Set upper clock boundaries for devices on CPU bus (CPU, Mselect,
@@ -366,6 +383,9 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
     }
 
     // Fill in memory controllers absolute range (scaled data is on ODM level)
+    NvOsDebugPrintf("NvRmPrivModuleID_MemoryController: %d", NvRmPrivModuleID_MemoryController);
+    NvOsDebugPrintf("NvRmPrivModuleID_ExternalMemoryController: %d", NvRmPrivModuleID_ExternalMemoryController);
+    NvOsDebugPrintf("NvRmPrivModuleID_ExternalMemory: %d", NvRmPrivModuleID_ExternalMemory);
     s_ClockRangeLimits[NvRmPrivModuleID_MemoryController].MaxKHz =
         pSKUedLimits->McMaxKHz;
     s_ClockRangeLimits[NvRmPrivModuleID_ExternalMemoryController].MaxKHz =
@@ -378,7 +398,7 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
             "External Memory Maxkhz before:%d\n",
             s_ClockRangeLimits[NvRmPrivModuleID_ExternalMemory].MaxKHz);
 
-    s_ClockRangeLimits[NvRmPrivModuleID_ExternalMemory].MaxKHz += 20000;
+    s_ClockRangeLimits[NvRmPrivModuleID_ExternalMemory].MaxKHz += 40000;
     NvOsDebugPrintf(
             "External Memory Maxkhz after:%d\n",
             s_ClockRangeLimits[NvRmPrivModuleID_ExternalMemory].MaxKHz);
@@ -387,7 +407,7 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
         NVRM_SDRAM_MIN_KHZ;
 
     // Set 3D upper clock boundary with combined Absolute/Scaled limit.
-    TDMaxKHz = pSKUedLimits->TDMaxKHz;
+    TDMaxKHz = 366666; //pSKUedLimits->TDMaxKHz;
     NvOsDebugPrintf(
             "TDMaxKHz before NV_MIN:%d\n",
             TDMaxKHz);
@@ -405,7 +425,7 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
             "NvRmModuleID_3D.MaxKHz before:%d\n",
             s_ClockRangeLimits[NvRmModuleID_3D].MaxKHz);
 
-    s_ClockRangeLimits[NvRmModuleID_3D].MaxKHz = 340000;
+    s_ClockRangeLimits[NvRmModuleID_3D].MaxKHz = 366666;
     NvOsDebugPrintf(
             "NvRmModuleID_3D.MaxKHz after:%d\n",
             s_ClockRangeLimits[NvRmModuleID_3D].MaxKHz);
