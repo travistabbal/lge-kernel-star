@@ -91,7 +91,7 @@ NvRmDfs *fakeShmoo_Dfs; // Used to get temp from cpufreq
 // Options for temperature monitoring
 #define NVRM_DTT_DISABLED (0)
 #define NVRM_DTT_USE_INTERRUPT (1)
-#define NVRM_DTT_RANGE_CHANGE_PRINTF (1)
+#define NVRM_DTT_RANGE_CHANGE_PRINTF (0)
 
 // Allow PMUs with CPU voltage range above chip minimum
 #define NVRM_DVS_ACCEPT_PMU_HIGH_CPU_MIN (1)
@@ -792,26 +792,33 @@ static void DfsParametersInit(NvRmDfs* pDfs)
 
     // System clock H/w limits are applied to AVP, AHB, and APB
     pClimits = NvRmPrivGetSocClockLimits(NvRmPrivModuleID_System);
-    HwLimitsKHz[NvRmDfsClockId_System] = *pClimits;
+    HwLimitsKHz[NvRmDfsClockId_System] = *pClimits; //morficlookhere
     HwLimitsKHz[NvRmDfsClockId_Avp] = *pClimits;
     HwLimitsKHz[NvRmDfsClockId_Ahb] = *pClimits;
     HwLimitsKHz[NvRmDfsClockId_Apb] = *pClimits;
+
+    NvOsDebugPrintf("HwLimitsKHz[NvRmDfsClockId_System]: %d\n", HwLimitsKHz[NvRmDfsClockId_System]);
+    NvOsDebugPrintf("HwLimitsKHz[NvRmDfsClockId_Avp]: %d\n", HwLimitsKHz[NvRmDfsClockId_Avp]);
+    NvOsDebugPrintf("HwLimitsKHz[NvRmDfsClockId_Ahb]: %d\n", HwLimitsKHz[NvRmDfsClockId_Ahb]);
+    NvOsDebugPrintf("HwLimitsKHz[NvRmDfsClockId_Apb]: %d\n", HwLimitsKHz[NvRmDfsClockId_Apb]);
 
     // V-pipe clock H/w limits
     pClimits = NvRmPrivGetSocClockLimits(NvRmModuleID_Vde);
     HwLimitsKHz[NvRmDfsClockId_Vpipe] = *pClimits;
 
+    NvOsDebugPrintf("HwLimitsKHz[NvRmDfsClockId_Vpipe]: %d\n", HwLimitsKHz[NvRmDfsClockId_Vpipe]);
+
     // EMC clock H/w limits (the limit table specifies EMC2x limits); on SoC
     // PLLM0 is used as a high limit for DFS
     pClimits =
         NvRmPrivGetSocClockLimits(NvRmPrivModuleID_ExternalMemoryController);
-    HwLimitsKHz[NvRmDfsClockId_Emc].MaxKHz = pClimits->MaxKHz / 2;
+    HwLimitsKHz[NvRmDfsClockId_Emc].MaxKHz = 700000 / 2;
     HwLimitsKHz[NvRmDfsClockId_Emc].MinKHz = pClimits->MinKHz / 2;
     if (s_Platform == ExecPlatform_Soc)
-    {
-        HwLimitsKHz[NvRmDfsClockId_Emc].MaxKHz =
-            NvRmPrivGetClockSourceFreq(NvRmClockSource_PllM0) / 2;
-    }
+//    {
+//        HwLimitsKHz[NvRmDfsClockId_Emc].MaxKHz =
+//            NvRmPrivGetClockSourceFreq(NvRmClockSource_PllM0) / 2;
+//    }
 
     // Clip requested clock boundaries to h/w limits, and initialize
     // low/high corner with minimum/maximum domain frequencies
@@ -819,14 +826,16 @@ static void DfsParametersInit(NvRmDfs* pDfs)
     {
         if (pDfs->DfsParameters[i].MaxKHz > HwLimitsKHz[i].MaxKHz)
             pDfs->DfsParameters[i].MaxKHz = HwLimitsKHz[i].MaxKHz;
+	   NvOsDebugPrintf("pDfs->DfsParameters[%d].MaxKHz: %d\n", i, pDfs->DfsParameters[i].MaxKHz);
         if (pDfs->DfsParameters[i].MinKHz < HwLimitsKHz[i].MinKHz)
             pDfs->DfsParameters[i].MinKHz = HwLimitsKHz[i].MinKHz;
         pDfs->LowCornerKHz.Domains[i] = pDfs->DfsParameters[i].MinKHz;
         pDfs->HighCornerKHz.Domains[i] = pDfs->DfsParameters[i].MaxKHz;
+	   NvOsDebugPrintf("pDfs->HighCornerKHz.Domains[%d]: %d\n", i, pDfs->HighCornerKHz.Domains[i]);
     }
 #ifdef USE_FAKE_SHMOO
-	// Set maximum scaling frequency to 1000mhz at boot
-	pDfs->HighCornerKHz.Domains[NvRmDfsClockId_Cpu] = 1000000;
+	// Set maximum scaling frequency to 1100mhz at boot
+	pDfs->HighCornerKHz.Domains[NvRmDfsClockId_Cpu] = 1100000;
 #endif
     pDfs->CpuCornersShadow.MinKHz =
         pDfs->LowCornerKHz.Domains[NvRmDfsClockId_Cpu];
@@ -2271,7 +2280,7 @@ DvsChangeCpuVoltage(
         NvRmPmuSetVoltage(hRm, pDvs->CpuRailAddress, TargetMv, NULL);
         pDvs->CurrentCpuMv = TargetMv;
 #ifdef USE_FAKE_SHMOO
-	printk( "*** fakeShmoo **** -> CurrentCpuMv : %i\n", TargetMv );
+	//printk( "*** fakeShmoo **** -> CurrentCpuMv : %i\n", TargetMv );
 #endif
     }
 }

@@ -280,10 +280,10 @@ extern "C"
 #define NVRM_DTT_POLL_MS_SLOW           (8000UL)
 
 /// Default low corners for core and dedicated CPU voltages
-#define NVRM_AP20_LOW_CORE_MV (850)
-#define NVRM_AP20_LOW_CPU_MV (650)
+#define NVRM_AP20_LOW_CORE_MV (750)
+#define NVRM_AP20_LOW_CPU_MV (675)
 /// Core voltage in suspend
-#define NVRM_AP20_SUSPEND_CORE_MV (900)
+#define NVRM_AP20_SUSPEND_CORE_MV (850)
 
 /// Core and CPU voltage reliability requirements for some skus
 #define NVRM_AP20_RELIABILITY_CORE_MV(sku) \
