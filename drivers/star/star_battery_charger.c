@@ -3086,7 +3086,7 @@ static int tegra_battery_probe(struct platform_device *pdev)
 	printk(KERN_INFO "%s: battery driver registered\n", pdev->name);
 
 	batt_dev->battery_poll_interval = NVBATTERY_POLLING_INTERVAL*HZ;
-	batt_dev->battery_workqueue = create_workqueue("battery_workqueue");
+	batt_dev->battery_workqueue = create_singlethread_workqueue("battery_workqueue");
 	if (batt_dev->battery_workqueue == NULL)
 	{
 		rc = -ENOMEM;
@@ -3383,7 +3383,11 @@ static int tegra_battery_suspend(struct platform_device *dev,
 			}
 			else if ( (batt_dev->old_alarm_sec <= alarm_sec) && (batt_dev->old_alarm_sec <= checkbat_sec) )
 			{
-				next_alarm_sec = batt_dev->old_alarm_sec;
+				if (now_sec <= batt_dev->old_alarm_sec) {
+					next_alarm_sec = checkbat_sec;
+				} else {
+					next_alarm_sec = batt_dev->old_alarm_sec;
+				}
 				batt_dev->old_alarm_sec = 0;
 				batt_dev->old_checkbat_sec = 0;
 				NvRmPmuWriteAlarm(s_hRmGlobal, next_alarm_sec);
