@@ -55,7 +55,7 @@
 #define NVRM_DEFAULT_PMU_ACCURACY_PCT (3)
 
 // Minimum core over CPU voltage margin (at SoC)
-#define NV_AP20_CORE_OVER_CPU_MV (120)
+#define NV_AP20_CORE_OVER_CPU_MV (160)
 
 /*****************************************************************************/
 
@@ -1214,10 +1214,10 @@ Ap20SystemClockSourceFind(
     {
         C1KHz = M1KHz = DomainKHz;
         c = NvRmPrivFindFreqMinAbove(NvRmClockDivider_Fractional_2,
-                NvRmPrivGetClockSourceFreq(NvRmClockSource_PllC0),
+                700000,
                 MaxKHz, &C1KHz);
         m = NvRmPrivFindFreqMinAbove(NvRmClockDivider_Fractional_2,
-                NvRmPrivGetClockSourceFreq(NvRmClockSource_PllM0),
+                700000,
                 MaxKHz, &M1KHz);
 
         SourceKHz = NV_MAX(NV_MAX(C1KHz, M1KHz), P2KHz);

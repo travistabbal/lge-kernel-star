@@ -1079,7 +1079,7 @@ NvRmPrivClocksInit(NvRmDeviceHandle hRmDevice)
                 s_ClockSourceFreq[NvRmClockSource_ClkD] = 24000;
             //}
             s_ClockSourceFreq[NvRmClockSource_PllA0] =  11289;
-            s_ClockSourceFreq[NvRmClockSource_PllP0] = 216000;
+            s_ClockSourceFreq[NvRmClockSource_PllP0] = 432000;
             s_ClockSourceFreq[NvRmClockSource_PllP1] =  28800;
             s_ClockSourceFreq[NvRmClockSource_PllP2] =  48000;
             s_ClockSourceFreq[NvRmClockSource_PllP3] =  72000;

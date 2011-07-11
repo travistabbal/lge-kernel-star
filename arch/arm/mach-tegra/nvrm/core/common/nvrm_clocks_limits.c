@@ -82,7 +82,7 @@ NvRmCpuShmoo fake_CpuShmoo; // Pointer to fake CpuShmoo values
 
 NvU32 FakeShmooVmaxIndex = 7; // Max voltage index in the voltage tab (size-1)
 
-#define MAX_OVERCLOCK (1540666)
+#define MAX_OVERCLOCK (1506660)
 
 NvU32 FakeShmooVoltages[] = {
     750,
@@ -108,7 +108,7 @@ NvRmScaledClkLimits FakepScaledCpuLimits = {
 	1100000,
 	1200000,
 	1400000,
-	1540666,
+	1506660,
     }
 };
 
@@ -301,8 +301,9 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
 
 s_ClockRangeLimits[2].MaxKHz = 280000;
 s_ClockRangeLimits[7].MaxKHz = 350000;
-s_ClockRangeLimits[8].MaxKHz = 366666;
+s_ClockRangeLimits[8].MaxKHz = 350000;
 s_ClockRangeLimits[10].MaxKHz = 350000;
+s_ClockRangeLimits[15].MaxKHz = 432000;
 
     // Fill in CPU scaling data if SoC has dedicated CPU rail, and CPU clock
     // characterization data is separated from other modules on common core rail
@@ -407,7 +408,7 @@ s_ClockRangeLimits[10].MaxKHz = 350000;
         NVRM_SDRAM_MIN_KHZ;
 
     // Set 3D upper clock boundary with combined Absolute/Scaled limit.
-    TDMaxKHz = 366666; //pSKUedLimits->TDMaxKHz;
+    TDMaxKHz = 350000; //pSKUedLimits->TDMaxKHz;
     NvOsDebugPrintf(
             "TDMaxKHz before NV_MIN:%d\n",
             TDMaxKHz);
@@ -425,7 +426,7 @@ s_ClockRangeLimits[10].MaxKHz = 350000;
             "NvRmModuleID_3D.MaxKHz before:%d\n",
             s_ClockRangeLimits[NvRmModuleID_3D].MaxKHz);
 
-    s_ClockRangeLimits[NvRmModuleID_3D].MaxKHz = 366666;
+    s_ClockRangeLimits[NvRmModuleID_3D].MaxKHz = 350000;
     NvOsDebugPrintf(
             "NvRmModuleID_3D.MaxKHz after:%d\n",
             s_ClockRangeLimits[NvRmModuleID_3D].MaxKHz);
