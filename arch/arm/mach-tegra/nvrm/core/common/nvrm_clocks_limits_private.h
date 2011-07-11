@@ -47,10 +47,10 @@ extern "C"
 #define NVRM_VOLTAGE_STEPS (8)
 
 // Minimum required core voltage resolution
-#define NVRM_CORE_RESOLUTION_MV (25)
+#define NVRM_CORE_RESOLUTION_MV (10)
 
 /// Maximum safe core voltage step
-#define NVRM_SAFE_VOLTAGE_STEP_MV (100)
+#define NVRM_SAFE_VOLTAGE_STEP_MV (125)
 
 // Minimum system bus frequency
 #define NVRM_BUS_MIN_KHZ (32)
