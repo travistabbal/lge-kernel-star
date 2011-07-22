@@ -55,6 +55,8 @@ include/linux/utsrelease.h
 include/linux/bounds.h
 arch/arm/mach-msm/smd_rpc_sym.c
 include/generated
+arch/arm/boot/compressed/lib1funcs.S
+include/asm-arm/
 
 # stgit generated dirs
 patches-*
