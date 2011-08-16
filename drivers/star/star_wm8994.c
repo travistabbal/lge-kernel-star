@@ -4,7 +4,7 @@
 #include <linux/kthread.h>
 #include <linux/device.h>
 #include <linux/kernel.h>
-//#include <linux/tegra_devices.h>	//20100716 bergkamp.cho@lge.com blocking for compile error [LGE]
+//#include <linux/tegra_devices.h>	//20100716  blocking for compile error [LGE]
 
 #include <nvodm_services.h>
 
@@ -208,18 +208,22 @@ void star_headsetdet_bias(int bias)
     ReadWolfsonRegister(g_wm8994, 0x0001, &r_data);
     if(bias == 0)
     {
-        r_data = r_data & (~0x0020);
-		printk("star_headsetdet_bias headset disabled %4x\n",r_data);
+        if(r_data & 0x0020){
+            r_data = r_data & (~0x0020);
+            printk("star_headsetdet_bias headset disabled %4x\n",r_data);
+        }
     }
-	else
-	{
-        r_data = r_data | (0x0020);
-		printk("star_headsetdet_bias headset enabled %4x\n",r_data);
-	}
-	WriteWolfsonRegister(g_wm8994, 0x0001, r_data);
-	return;
+    else
+    {
+        if( (r_data & 0x0020) == 0){
+            r_data = r_data | (0x0023);
+            WriteWolfsonRegister(g_wm8994, 0x0001, r_data);
+            printk("star_headsetdet_bias headset enabled %4x\n",r_data);
+        }
+    }
+    return;
 }
-//heejeong.seo@lge.com 20110726 mic_bias [start]
+// 20110726 mic_bias [start]
 
 void star_Mic_bias(int bias)
 {
@@ -238,7 +242,7 @@ void star_Mic_bias(int bias)
 	WriteWolfsonRegister(g_wm8994, 0x0001, r_data);
 	return;
 }
-//heejeong.seo@lge.com 20110726 mic_bias [end]
+// 20110726 mic_bias [end]
 
 
 /**
@@ -268,9 +272,6 @@ static NvS32 __init wm8994_probe(struct platform_device *pdev)
 	//reset wm8994 codec
 	WriteWolfsonRegister(g_wm8994, 0x0000, 0x0001);	
 	WriteWolfsonRegister(g_wm8994, 0x0001, 0x0003);
-	WriteWolfsonRegister(g_wm8994, 0x001c, 0x007f); // Left headset out (without update)
-	WriteWolfsonRegister(g_wm8994, 0x001d, 0x017f); // Right headset out and set flag to update both
-	WriteWolfsonRegister(g_wm8994, 0x0025, 0x007f); // Speaker boost
 	wake_lock_init(&g_wm8994->wm8994_wake_lock, WAKE_LOCK_SUSPEND, "wm8994_call_wakelock");
 	err = device_create_file(&pdev->dev, &dev_attr_data);
 	err = device_create_file(&pdev->dev, &dev_attr_wm8994_wakelock);
@@ -285,15 +286,6 @@ static NvS32 wm8994_remove(struct platform_device *pdev)
 	
 	return 0;
 }
-
-static struct attribute *star_wm8994_attributes[] = {
-    &dev_attr_data.attr,
-    NULL
-};
-
-static const struct attribute_group star_wm8994_group = {
-    .attrs = star_wm8994_attributes,
-};
 
 static struct platform_driver star_wm8994_driver = {
 	.probe	= wm8994_probe,
