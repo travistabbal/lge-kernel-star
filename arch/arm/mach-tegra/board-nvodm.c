@@ -1775,7 +1775,7 @@ static struct spi_board_info tegra_spi_board_info[] __initdata = {
         .chip_select = 0,
         .mode = SPI_MODE_1,
         .max_speed_hz = 24000000,
-//        .platform_data = NULL,//°ËÅä
+//        .platform_data = NULL,//ï¿½ï¿½ï¿½ï¿½
         .irq = 0,
     },
 };
@@ -1998,7 +1998,7 @@ static struct spi_board_info tegra_spi_board_info[] __initdata = {
         .chip_select = 0,
         .mode = SPI_MODE_1,
         .max_speed_hz = 24000000,
-//        .platform_data = NULL,//°ËÅä 
+//        .platform_data = NULL,//ï¿½ï¿½ï¿½ï¿½ 
         .irq = 0,
     },
 //20100809-1, , Add SPI2 for AP-CP IPC [START]
@@ -2009,7 +2009,7 @@ static struct spi_board_info tegra_spi_board_info[] __initdata = {
 		.chip_select = 0,
 		.mode = SPI_MODE_1,
 		.max_speed_hz = 24000000,
-//		  .platform_data = NULL,//°ËÅä 
+//		  .platform_data = NULL,//ï¿½ï¿½ï¿½ï¿½ 
 		.irq = 0,
 	},
 #endif

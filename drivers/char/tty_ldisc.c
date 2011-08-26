@@ -737,6 +737,8 @@ static int tty_ldisc_reinit(struct tty_struct *tty, int ldisc)
 
 	WARN_ON_ONCE(tty_ldisc_wait_idle(tty));
 
+	WARN_ON_ONCE(tty_ldisc_wait_idle(tty));
+
 	tty_ldisc_close(tty, tty->ldisc);
 	tty_ldisc_put(tty->ldisc);
 	tty->ldisc = NULL;
