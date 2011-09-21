@@ -42,7 +42,7 @@
 #include "ap15/project_relocation_table.h"
 
 #define USE_FAKE_SHMOO
-//#define USE_FAKE_SHMOO_PSYCHO
+#define USE_FAKE_SHMOO_PSYCHO
 
 #ifdef USE_FAKE_SHMOO
 #include <linux/kernel.h>
@@ -85,14 +85,14 @@ NvU32 FakeShmooVmaxIndex = 7; // Max voltage index in the voltage tab (size-1)
 #define MAX_OVERCLOCK (1506660)
 
 NvU32 FakeShmooVoltages[] = {
-    750,
-    800,
-    900,
-    975,
-    1075,
-    1175,
-    1275,
-    1375,
+      750,
+      850,
+      950,
+      1050,
+      1150,
+      1250,
+      1350,
+      1450,
 };
 
 NvRmScaledClkLimits FakepScaledCpuLimits = {
@@ -101,14 +101,14 @@ NvRmScaledClkLimits FakepScaledCpuLimits = {
     32, // FakepScaledCpuLimits.MinKHz
     // Clock table
     {
-	216000,
-    	432000,
-    	594000,
-    	1000000,
-	1100000,
-	1200000,
-	1400000,
-	1506660,
+      216000,
+      432000,
+      594000,
+      1000000,
+      1100000,
+      1200000,
+      1400000,
+      1506660,
     }
 };
 
